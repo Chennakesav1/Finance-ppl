@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance CRM</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>if (localStorage.getItem('precifast_auth') !== 'true') window.location.href = "login.html";</script>
+    <style>
+        .inline-edit-date { border: 1px solid #ccc; padding: 6px; border-radius: 4px; background-color: #fcfcfc; cursor: pointer; font-family: inherit; }
+        .inline-edit-date:focus { border-color: #3498db; outline: none; background-color: #fff; box-shadow: 0 0 5px rgba(52,152,219,0.5); }
+        .form-label { font-size: 13px; font-weight: bold; color: #2c3e50; margin-bottom: -10px; }
+        .search-bar { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; }
+        .export-btn { margin-left: 10px; padding: 8px 15px; background-color: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .export-btn.word { background-color: #2980b9; }
+        select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div id="toast" class="toast">Message</div>
+
+    <div class="crm-container">
+        <nav class="sidebar">
+            <div class="logo"><h2>Finance Dept</h2></div>
+            <ul class="nav-links">
+                <li class="active" onclick="switchTab('summary')"><i class="fas fa-chart-line"></i> Summary</li>
+                <li onclick="switchTab('sales')"><i class="fas fa-file-invoice-dollar"></i> Sales</li>
+                <li onclick="switchTab('purchase')"><i class="fas fa-shopping-cart"></i> Purchase</li>
+                <li onclick="switchTab('manual')"><i class="fas fa-edit"></i> Manual Entry</li>
+                <li onclick="switchTab('upload')"><i class="fas fa-file-excel"></i> Upload MIS</li>
+                <li onclick="logout()" style="margin-top: 30px; color: #e74c3c; border-top: 1px solid #34495e; padding-top: 20px;"><i class="fas fa-sign-out-alt"></i> Secure Logout</li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <header>
+                <h1 id="page-title">Summary Dashboard</h1>
+                <div class="month-filter-container">
+                    <label>Filter by Date: </label>
+                    <input type="date" id="date-selector" onchange="loadFinanceData()">
+                    <button class="export-btn" onclick="downloadPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+                    <button class="export-btn word" onclick="downloadWord()"><i class="fas fa-file-word"></i> Word</button>
+                </div>
+            </header>
+
+            <section id="summary" class="tab-content active-tab">
+                <div id="summary-export-content" style="background: #fff; padding: 20px; border-radius: 8px;">
+                    <div class="analysis-container" style="display: flex; gap: 40px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 350px;">
+                            <h2 style="margin-bottom: 15px; color: #2c3e50;">Sales Summary</h2>
+                            <table class="data-table" id="sales-summary-table">
+                                <thead><tr><th>Particulars</th><th>Today sales</th><th>MTD Total</th></tr></thead>
+                                <tbody></tbody>
+                                <tfoot><tr><th>Grand Total</th><th id="s-today-total">₹0</th><th id="s-mtd-total">₹0</th></tr></tfoot>
+                            </table>
+                        </div>
+                        <div style="flex: 1; min-width: 350px;">
+                            <h2 style="margin-bottom: 15px; color: #2c3e50;">Purchases Summary</h2>
+                            <table class="data-table" id="purchase-summary-table">
+                                <thead><tr><th>Particulars</th><th>Today GRN</th><th>MTD GRN</th></tr></thead>
+                                <tbody></tbody>
+                                <tfoot><tr><th>Grand Total</th><th id="p-today-total">₹0</th><th id="p-mtd-total">₹0</th></tr></tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sales" class="tab-content">
+                <h2>Sales Records</h2>
+                <input type="text" id="sales-search" class="search-bar" placeholder="🔍 Search Sales by Customer, Invoice No..." onkeyup="filterTable('sales-body', 'sales-search')">
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>S.No</th>
+                                <th>Date</th>
+                                <th>Particulars (Customer)</th>
+                                <th>Invoice</th>
+                                <th>Value (₹)</th>
+                                <th>Remarks</th>
+                                
+                            </tr>
+                        </thead>
+                        <tbody id="sales-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="purchase" class="tab-content">
+                <h2>Purchase Records</h2>
+                <input type="text" id="purchase-search" class="search-bar" placeholder="🔍 Search Purchases by Supplier, GSTIN..." onkeyup="filterTable('purchase-body', 'purchase-search')">
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>S.No</th><th>GSTIN of supplier</th><th>Trade/Legal name of the Supplier</th>
+                                <th>Invoice number</th><th>Invoice Date</th><th>Mat. rec. Date</th>
+                                <th>Invoice Value (₹)</th><th>Taxable Value (₹)</th><th>Integrated Tax (₹)</th>
+                                <th>Central Tax (₹)</th><th>State/UT tax (₹)</th><th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody id="purchase-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="manual" class="tab-content">
+                <h2>Add Manual Entries</h2>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    
+                    <div class="card" style="flex: 1; min-width: 300px;">
+                        <h3>Add Manual Sale</h3>
+                        <form id="manual-sale-form" class="vertical-form">
+                            <label class="form-label">Date:</label>
+                            <input type="date" id="s-date" required>
+                            
+                            <label class="form-label">Particulars (Customer):</label>
+                            <select id="s-customer-select" onchange="handleCustomerChange()" required>
+                                <option value="" disabled selected>Select Customer</option>
+                                </select>
+                            <input type="text" id="s-customer-new" placeholder="Enter New Customer Name" style="display:none; margin-top: 10px;">
+
+                            <label class="form-label">Vch No. (Invoice):</label>
+                            <input type="text" id="s-invNo" placeholder="Invoice Number (Auto-generates)" required>
+                            
+                            <label class="form-label">Value (₹):</label>
+                            <input type="number" id="s-val" placeholder="Total Value" required>
+                            
+                            <label class="form-label">Remarks:</label>
+                            <select id="s-marketier" required>
+                                <option value="" disabled selected>Select Category</option>
+                                <option value="OE">OE</option>
+                                <option value="Retails">Retails</option>
+                                <option value="SS Dealers">SS Dealers</option>
+                            </select>
+                            <button type="submit" class="btn-primary" style="margin-top: 10px;">Save Sale</button>
+                        </form>
+                    </div>
+
+                    <div class="card" style="flex: 1; min-width: 300px;">
+                        <h3>Add Manual Purchase</h3>
+                        <form id="manual-purchase-form" class="vertical-form">
+                            <label class="form-label">Trade/Legal name of the Supplier:</label>
+                            <select id="p-vendor-select" onchange="handleVendorChange()" required>
+                                <option value="" disabled selected>Select Supplier</option>
+                                </select>
+                            <input type="text" id="p-vendor-new" placeholder="Enter New Supplier Name" style="display:none; margin-top: 10px;">
+
+                            <input type="text" id="p-gstin" placeholder="GSTIN of supplier (Auto-fills)">
+                            <input type="text" id="p-invNo" placeholder="Invoice number (Auto-generates)" required>
+                            
+                            <label class="form-label">Invoice Date:</label>
+                            <input type="date" id="p-date" required>
+                            <label class="form-label">Mat. rec. Date (TALLY):</label>
+                            <input type="date" id="p-matDate" style="margin-bottom: 10px;">
+                            
+                            <input type="number" id="p-tax" placeholder="Taxable Value (₹)" required oninput="autoCalculatePurchase()">
+                            <input type="number" id="p-igst" placeholder="Integrated Tax (18% Auto) (₹)">
+                            <input type="number" id="p-val" placeholder="Invoice Value (Auto) (₹)" required>
+                            <input type="number" id="p-cgst" placeholder="Central Tax (₹)">
+                            <input type="number" id="p-sgst" placeholder="State/UT tax (₹)">
+                            
+                            <select id="p-remarks" required>
+                                <option value="" disabled selected>Select Particulars</option>
+                                <option value="Consumables">Consumables</option>
+                                <option value="Logistics">Logistics</option>
+                                <option value="Maintanance">Maintanance</option>
+                                <option value="Outsourcing">Outsourcing</option>
+                                <option value="Packing consu.">Packing consu.</option>
+                                <option value="RM">RM</option>
+                                <option value="Tools">Tools</option>
+                            </select>
+                            <button type="submit" class="btn-primary" style="margin-top: 10px;">Save Purchase</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <section id="upload" class="tab-content">
+                <h2>Upload MIS Excel</h2>
+                <div class="card" style="max-width: 500px; margin-top: 20px;">
+                    <form id="upload-form">
+                        <input type="file" id="file-input" accept=".xlsx, .xls" style="margin: 15px 0;" required><br>
+                        <button type="submit" id="upload-btn" class="btn-primary" style="width: 100%;">Upload & Sync Data</button>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

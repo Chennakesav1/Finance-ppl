@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Precifast Finance</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #2c3e50; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        .login-card { background: #ffffff; padding: 40px 50px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 400px; text-align: center; }
+        .login-card h1 { color: #2c3e50; font-size: 24px; margin-bottom: 5px; letter-spacing: 1px; }
+        .login-card h3 { color: #7f8c8d; font-size: 14px; margin-bottom: 30px; font-weight: 500; }
+        .input-group { position: relative; margin-bottom: 20px; }
+        .input-group i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #95a5a6; }
+        .login-card input { width: 100%; padding: 12px 15px 12px 40px; border: 1px solid #ccc; border-radius: 4px; font-size: 15px; box-sizing: border-box; }
+        .login-card input:focus { border-color: #3498db; outline: none; box-shadow: 0 0 5px rgba(52, 152, 219, 0.3); }
+        .login-btn { width: 100%; padding: 12px; background-color: #3498db; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.3s; }
+        .login-btn:hover { background-color: #2980b9; }
+        #login-error { color: #e74c3c; font-size: 13px; margin-top: 15px; display: none; }
+    </style>
+
+    <script>
+        if (localStorage.getItem('precifast_auth') === 'true') {
+            window.location.href = "index.html";
+        }
+    </script>
+</head>
+<body>
+
+    <div class="login-card">
+        <h1>PRECIFAST PVT LTD</h1>
+        <h3>FINANCE DEPARTMENT LOGIN</h3>
+
+        <form id="login-form">
+            <div class="input-group">
+                <i class="fas fa-user"></i>
+                <input type="text" id="username" placeholder="Username" required>
+            </div>
+            <div class="input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="password" placeholder="Password" required>
+            </div>
+            
+            <button type="submit" class="login-btn">Secure Login</button>
+            <p id="login-error"><i class="fas fa-exclamation-circle"></i> Invalid Username or Password</p>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault(); 
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            const errorText = document.getElementById('login-error');
+
+            // Default Credentials
+            const validUser = "finance";
+            const validPass = "finance123";
+
+            if (user === validUser && pass === validPass) {
+                // SUCCESS: Save login state to browser memory
+                localStorage.setItem('precifast_auth', 'true');
+                window.location.href = "index.html";
+            } else {
+                // FAIL: Show Error
+                errorText.style.display = "block";
+                const card = document.querySelector('.login-card');
+                card.style.transform = "translateX(10px)";
+                setTimeout(() => card.style.transform = "translateX(-10px)", 100);
+                setTimeout(() => card.style.transform = "translateX(10px)", 200);
+                setTimeout(() => card.style.transform = "translateX(0)", 300);
+            }
+        });
+    </script>
+</body>
+</html>
