@@ -1,6 +1,6 @@
 function logout() { localStorage.removeItem('precifast_auth'); window.location.href = "login.html"; }
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = '';
 let vendorDetails = {};
 
 function switchTab(tabId) {
