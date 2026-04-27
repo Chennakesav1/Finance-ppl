@@ -9,13 +9,16 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>if (localStorage.getItem('precifast_auth') !== 'true') window.location.href = "login.html";</script>
     <style>
-        .inline-edit-date { border: 1px solid #ccc; padding: 6px; border-radius: 4px; background-color: #fcfcfc; cursor: pointer; font-family: inherit; }
-        .inline-edit-date:focus { border-color: #3498db; outline: none; background-color: #fff; box-shadow: 0 0 5px rgba(52,152,219,0.5); }
         .form-label { font-size: 13px; font-weight: bold; color: #2c3e50; margin-bottom: -10px; }
         .search-bar { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; }
         .export-btn { margin-left: 10px; padding: 8px 15px; background-color: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .export-btn.word { background-color: #2980b9; }
         select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; font-size: 14px; }
+        
+        /* 💥 EXCEL-STYLE EDITABLE CELL CSS */
+        .editable-cell { cursor: text; transition: all 0.2s; border-bottom: 1px dotted transparent; }
+        .editable-cell:hover { background-color: #f1f8ff; border-bottom: 1px dotted #3498db; }
+        .editable-cell:focus { background-color: #fff; outline: 2px solid #3498db; border-radius: 3px; }
     </style>
 </head>
 <body>
@@ -78,10 +81,9 @@
                                 <th>S.No</th>
                                 <th>Date</th>
                                 <th>Particulars (Customer)</th>
-                                <th>Invoice</th>
+                                <th>Vch No.</th>
                                 <th>Value (₹)</th>
                                 <th>Remarks</th>
-                                
                             </tr>
                         </thead>
                         <tbody id="sales-body"></tbody>
@@ -110,7 +112,6 @@
             <section id="manual" class="tab-content">
                 <h2>Add Manual Entries</h2>
                 <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                    
                     <div class="card" style="flex: 1; min-width: 300px;">
                         <h3>Add Manual Sale</h3>
                         <form id="manual-sale-form" class="vertical-form">
@@ -120,11 +121,11 @@
                             <label class="form-label">Particulars (Customer):</label>
                             <select id="s-customer-select" onchange="handleCustomerChange()" required>
                                 <option value="" disabled selected>Select Customer</option>
-                                </select>
+                            </select>
                             <input type="text" id="s-customer-new" placeholder="Enter New Customer Name" style="display:none; margin-top: 10px;">
 
                             <label class="form-label">Vch No. (Invoice):</label>
-                            <input type="text" id="s-invNo" placeholder="Invoice Number (Auto-generates)" required>
+                            <input type="text" id="s-invNo" placeholder="Invoice Number" required>
                             
                             <label class="form-label">Value (₹):</label>
                             <input type="number" id="s-val" placeholder="Total Value" required>
@@ -146,7 +147,7 @@
                             <label class="form-label">Trade/Legal name of the Supplier:</label>
                             <select id="p-vendor-select" onchange="handleVendorChange()" required>
                                 <option value="" disabled selected>Select Supplier</option>
-                                </select>
+                            </select>
                             <input type="text" id="p-vendor-new" placeholder="Enter New Supplier Name" style="display:none; margin-top: 10px;">
 
                             <input type="text" id="p-gstin" placeholder="GSTIN of supplier (Auto-fills)">

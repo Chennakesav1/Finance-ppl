@@ -27,7 +27,6 @@ function filterTable(tbodyId, inputId) {
     }
 }
 
-// STRICT UTC rendering to prevent "One Day Back" timezone shifting
 const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -44,7 +43,6 @@ const matchCategory = (targetCat, dataCat) => {
 function handleCustomerChange() {
     const select = document.getElementById('s-customer-select');
     const newCustomerInput = document.getElementById('s-customer-new');
-    
     if (select.value === 'Other') {
         newCustomerInput.style.display = 'block';
         newCustomerInput.required = true;
@@ -60,7 +58,6 @@ function handleVendorChange() {
     const select = document.getElementById('p-vendor-select');
     const newVendorInput = document.getElementById('p-vendor-new');
     const gstinInput = document.getElementById('p-gstin');
-    
     if (select.value === 'Other') {
         newVendorInput.style.display = 'block';
         newVendorInput.required = true;
@@ -95,6 +92,46 @@ function downloadWord() {
     link.href = URL.createObjectURL(blob);
     link.download = `Summary_Report.doc`;
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+
+// 💥 THE NEW EXCEL-LIKE EDIT FUNCTION
+function cellKeydown(event, id, field, type, cell) {
+    if (event.key === 'Enter') {
+        event.preventDefault(); // Stop new line from forming
+        cell.blur(); // Un-focus the cell
+        
+        if (confirm("Are you sure you want to permanently save this change?")) {
+            let newValue = cell.innerText.trim();
+            
+            // If it's a date formatted as DD/MM/YYYY, fix it for the database
+            if (field.toLowerCase().includes('date')) {
+                const parts = newValue.split('/');
+                if (parts.length === 3) newValue = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            } else {
+                // If it is a currency field, safely strip the ₹ and commas
+                if (['invoiceValue', 'taxableValue', 'integratedTax', 'centralTax', 'stateTax'].includes(field)) {
+                    newValue = newValue.replace(/[^0-9.-]+/g, ""); 
+                }
+            }
+
+            fetch(`${API_BASE}/api/finance/update-record/${type}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ field, value: newValue })
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast("✅ " + data.message);
+                loadFinanceData(); // Reload safely to update formulas
+            })
+            .catch(err => {
+                showToast("❌ Failed to update.", true);
+                loadFinanceData(); 
+            });
+        } else {
+            loadFinanceData(); // User clicked Cancel, restore original value
+        }
+    }
 }
 
 async function loadFinanceData() {
@@ -145,29 +182,32 @@ async function loadFinanceData() {
         document.getElementById('p-today-total').innerText = `₹${pTodayTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
         document.getElementById('p-mtd-total').innerText = `₹${pMtdTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
 
-        // 💥 COMPLETELY REMOVED THE EXTRA DATE COLUMN
+        // 💥 TABLES ARE NOW FULLY EDITABLE VIA contenteditable="true"
         document.getElementById('sales-body').innerHTML = tables.receivables.map((inv, index) => `
             <tr>
                 <td><strong>${index + 1}</strong></td>
-                <td>${formatDate(inv.invoiceDate)}</td>
-                <td>${inv.customer || ''}</td>
-                <td>${inv.invoiceNo || ''}</td>
-                <td>₹${(inv.invoiceValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                <td>${inv.marketier || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceDate', 'Sales', this)">${formatDate(inv.invoiceDate)}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'customer', 'Sales', this)">${inv.customer || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceNo', 'Sales', this)">${inv.invoiceNo || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceValue', 'Sales', this)">₹${(inv.invoiceValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'marketier', 'Sales', this)">${inv.marketier || ''}</td>
             </tr>
         `).join('');
 
         document.getElementById('purchase-body').innerHTML = tables.payables.map((pay, index) => `
             <tr>
                 <td><strong>${index + 1}</strong></td>
-                <td>${pay.gstin || ''}</td><td>${pay.vendor || ''}</td>
-                <td>${pay.invoiceNumber || ''}</td><td>${formatDate(pay.invoiceDate)}</td><td>${formatDate(pay.matRecDate)}</td>
-                <td>₹${(pay.invoiceValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                <td>₹${(pay.taxableValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                <td>₹${(pay.integratedTax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                <td>₹${(pay.centralTax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                <td>₹${(pay.stateTax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                <td>${pay.remarks || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'gstin', 'Purchase', this)">${pay.gstin || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'vendor', 'Purchase', this)">${pay.vendor || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'invoiceNumber', 'Purchase', this)">${pay.invoiceNumber || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'invoiceDate', 'Purchase', this)">${formatDate(pay.invoiceDate)}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'matRecDate', 'Purchase', this)">${formatDate(pay.matRecDate)}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'invoiceValue', 'Purchase', this)">₹${(pay.invoiceValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'taxableValue', 'Purchase', this)">₹${(pay.taxableValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'integratedTax', 'Purchase', this)">₹${(pay.integratedTax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'centralTax', 'Purchase', this)">₹${(pay.centralTax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'stateTax', 'Purchase', this)">₹${(pay.stateTax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'remarks', 'Purchase', this)">${pay.remarks || ''}</td>
             </tr>
         `).join('');
 
