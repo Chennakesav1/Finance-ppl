@@ -7,12 +7,7 @@ function switchTab(tabId) {
     document.querySelectorAll('.nav-links li').forEach(l => l.classList.remove('active'));
     document.getElementById(tabId).classList.add('active-tab');
     event.currentTarget.classList.add('active');
-    
-    // 💥 UPDATED TITLES
-    const titles = { 
-        'summary':'Summary Dashboard', 'sales':'Sales Register', 'purchase':'Purchase Register', 
-        'bank':'Bank Statement Register', 'manual':'Manual Entry', 'upload':'Upload Data'
-    };
+    const titles = { 'summary':'Summary Dashboard', 'sales':'Sales Register', 'purchase':'Purchase Register', 'payments':'Payments Register', 'collections':'Collections Register', 'bank':'Bank Statement Register', 'manual':'Manual Entry', 'upload':'Upload Data'};
     document.getElementById('page-title').innerText = titles[tabId];
 }
 
@@ -37,6 +32,13 @@ const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
     return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
+};
+
+// 💥 NEW: FORMAT DATE & TIME FOR BANK TRANSACTIONS
+const formatDateTime = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')}`;
 };
 
 const matchCategory = (targetCat, dataCat) => {
@@ -93,8 +95,8 @@ function cellKeydown(event, id, field, type, cell) {
         if (confirm("Are you sure you want to permanently save this change?")) {
             let newValue = cell.innerText.trim();
             if (field.toLowerCase().includes('date')) {
-                const parts = newValue.split('/');
-                if (parts.length === 3) newValue = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                // Allows exact edits by swapping slashes to dashes (backend handles it securely)
+                newValue = newValue.replace(/\//g, '-');
             } else if (['invoiceValue', 'taxableValue', 'integratedTax', 'centralTax', 'stateTax', 'debit', 'credit', 'balance', 'finalBalance'].includes(field)) {
                 newValue = newValue.replace(/[^0-9.-]+/g, ""); 
             }
@@ -125,7 +127,6 @@ async function loadFinanceData() {
         tables.payables.forEach(p => { if (p.vendor && !vendorDetails[p.vendor]) vendorDetails[p.vendor] = p.gstin || ''; });
         document.getElementById('p-vendor-select').innerHTML = '<option value="" disabled selected>Select Supplier</option>' + Object.keys(vendorDetails).map(v => `<option value="${v}">${v}</option>`).join('') + '<option value="Other" style="font-weight:bold; color:#3498db;">+ Other (Add New)</option>';
 
-        // SALES SUMMARY
         const salesCats = ['OE', 'Retails', 'SS Dealers'];
         let sTodayTotal = 0, sMtdTotal = 0;
         document.querySelector('#sales-summary-table tbody').innerHTML = salesCats.map(cat => {
@@ -136,7 +137,6 @@ async function loadFinanceData() {
         document.getElementById('s-today-total').innerText = `₹${sTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('s-mtd-total').innerText = `₹${sMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // PURCHASE SUMMARY
         const purCats = ['Consumables', 'Logistics', 'Maintanance', 'Outsourcing', 'Packing consu.', 'RM', 'Tools'];
         let pTodayTotal = 0, pMtdTotal = 0;
         document.querySelector('#purchase-summary-table tbody').innerHTML = purCats.map(cat => {
@@ -147,7 +147,6 @@ async function loadFinanceData() {
         document.getElementById('p-today-total').innerText = `₹${pTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('p-mtd-total').innerText = `₹${pMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // PAYMENTS SUMMARY
         const payCats = ['RM', 'Statutory', 'Tools /consu/R&M', 'Others', 'Sundry Exp', 'Freight'];
         let payTodayTotal = 0, payMtdTotal = 0;
         document.querySelector('#payments-summary-table tbody').innerHTML = payCats.map(cat => {
@@ -158,7 +157,6 @@ async function loadFinanceData() {
         document.getElementById('pay-today-total').innerText = `₹${payTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('pay-mtd-total').innerText = `₹${payMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // COLLECTIONS SUMMARY
         const colCats = ['OE', 'Retails', 'SS Dealers', 'Others'];
         let colTodayTotal = 0, colMtdTotal = 0;
         document.querySelector('#collections-summary-table tbody').innerHTML = colCats.map(cat => {
@@ -169,7 +167,6 @@ async function loadFinanceData() {
         document.getElementById('col-today-total').innerText = `₹${colTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('col-mtd-total').innerText = `₹${colMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // SALES TABLE
         document.getElementById('sales-body').innerHTML = tables.receivables.map((inv, index) => `
             <tr>
                 <td><strong>${index + 1}</strong></td>
@@ -181,7 +178,6 @@ async function loadFinanceData() {
             </tr>
         `).join('');
 
-        // PURCHASE TABLE
         document.getElementById('purchase-body').innerHTML = tables.payables.map((pay, index) => `
             <tr>
                 <td><strong>${index + 1}</strong></td>
@@ -199,11 +195,49 @@ async function loadFinanceData() {
             </tr>
         `).join('');
 
-        // 💥 SINGLE UNIFIED BANK TABLE
+        const payments = tables.bankTransactions.filter(tx => tx.debit > 0);
+        document.getElementById('payments-body').innerHTML = payments.map((tx, index) => `
+            <tr>
+                <td><strong>${index + 1}</strong></td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'transactionDate', 'Bank', this)">${formatDateTime(tx.transactionDate)}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'valueDate', 'Bank', this)">${formatDate(tx.valueDate)}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'chequeNo', 'Bank', this)">${tx.chequeNo || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'description', 'Bank', this)">${tx.description || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'branchCode', 'Bank', this)">${tx.branchCode || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'head', 'Bank', this)">${tx.head || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'name', 'Bank', this)">${tx.name || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'remarks', 'Bank', this)">${tx.remarks || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'debit', 'Bank', this)">₹${(tx.debit || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'credit', 'Bank', this)">₹${(tx.credit || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'balance', 'Bank', this)">₹${(tx.balance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'finalBalance', 'Bank', this)">₹${(tx.finalBalance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+            </tr>
+        `).join('');
+
+        const collections = tables.bankTransactions.filter(tx => tx.credit > 0);
+        document.getElementById('collections-body').innerHTML = collections.map((tx, index) => `
+            <tr>
+                <td><strong>${index + 1}</strong></td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'transactionDate', 'Bank', this)">${formatDateTime(tx.transactionDate)}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'valueDate', 'Bank', this)">${formatDate(tx.valueDate)}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'chequeNo', 'Bank', this)">${tx.chequeNo || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'description', 'Bank', this)">${tx.description || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'branchCode', 'Bank', this)">${tx.branchCode || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'head', 'Bank', this)">${tx.head || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'name', 'Bank', this)">${tx.name || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'remarks', 'Bank', this)">${tx.remarks || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'debit', 'Bank', this)">₹${(tx.debit || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'credit', 'Bank', this)">₹${(tx.credit || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'balance', 'Bank', this)">₹${(tx.balance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'finalBalance', 'Bank', this)">₹${(tx.finalBalance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+            </tr>
+        `).join('');
+
+        // unified Bank tab body uses bankTransactions array
         document.getElementById('bank-body').innerHTML = tables.bankTransactions.map((tx, index) => `
             <tr>
                 <td><strong>${index + 1}</strong></td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'transactionDate', 'Bank', this)">${formatDate(tx.transactionDate)}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'transactionDate', 'Bank', this)">${formatDateTime(tx.transactionDate)}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'valueDate', 'Bank', this)">${formatDate(tx.valueDate)}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'chequeNo', 'Bank', this)">${tx.chequeNo || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'description', 'Bank', this)">${tx.description || ''}</td>

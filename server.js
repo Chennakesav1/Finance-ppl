@@ -32,6 +32,23 @@ const parseExcelDate = (val) => {
     return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0));
 };
 
+const parseExcelDateTime = (val) => {
+    if (!val || val === '') return null; 
+    if (typeof val === 'number') return new Date((val - 25569) * 86400 * 1000); 
+    
+    let strVal = String(val).trim();
+    const dmyTimeMatch = strVal.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})/);
+    if (dmyTimeMatch) {
+        return new Date(Date.UTC(parseInt(dmyTimeMatch[3]), parseInt(dmyTimeMatch[2]) - 1, parseInt(dmyTimeMatch[1]), parseInt(dmyTimeMatch[4]), parseInt(dmyTimeMatch[5]), parseInt(dmyTimeMatch[6])));
+    }
+    const dmyMatch = strVal.match(/^(\d{2})-(\d{2})-(\d{4})/);
+    if (dmyMatch) return new Date(Date.UTC(parseInt(dmyMatch[3]), parseInt(dmyMatch[2]) - 1, parseInt(dmyMatch[1]), 12, 0, 0));
+
+    const d = new Date(val);
+    if (isNaN(d.valueOf())) return null;
+    return d;
+};
+
 const getVal = (row, searchStrs) => {
     const keys = Object.keys(row);
     for (let search of searchStrs) {
@@ -63,43 +80,33 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
         }
 
         if (isBankStmt) {
-            // Read with standard headers
             const bankData = xlsx.utils.sheet_to_json(firstSheet, { range: bankHeaderIndex });
             const bulkBankOps = [];
             
             bankData.forEach(r => {
                 const desc = getVal(r, ['description']);
-                const tDate = parseExcelDate(getVal(r, ['transactiondate']));
+                const tDate = parseExcelDateTime(getVal(r, ['transactiondate']));
                 if (!desc || !tDate) return;
 
-                // 💥 FIND BOTH BALANCES: Excel parser labels duplicates as 'Balance_1'
                 const keys = Object.keys(r);
                 const balanceKeys = keys.filter(k => k.toLowerCase().includes('balance'));
                 const firstBal = balanceKeys.length > 0 ? parseFloat(r[balanceKeys[0]]) : 0;
                 const secondBal = balanceKeys.length > 1 ? parseFloat(r[balanceKeys[1]]) : 0;
 
                 const doc = {
-                    transactionDate: tDate, 
-                    valueDate: parseExcelDate(getVal(r, ['valuedate'])),
-                    chequeNo: getVal(r, ['chequeno', 'cheque']), 
-                    description: desc, 
-                    branchCode: getVal(r, ['branchcode']),
-                    debit: parseFloat(getVal(r, ['debit'])) || 0, 
-                    credit: parseFloat(getVal(r, ['credit'])) || 0, // 💥 Credit perfectly captured
-                    balance: firstBal || 0,
-                    finalBalance: secondBal || 0, // 💥 Second balance assigned here
-                    head: getVal(r, ['head']), 
-                    name: getVal(r, ['name']),
-                    remarks: getVal(r, ['remarks', 'remakrs'])
+                    transactionDate: tDate, valueDate: parseExcelDate(getVal(r, ['valuedate'])),
+                    chequeNo: getVal(r, ['chequeno', 'cheque']), description: desc, branchCode: getVal(r, ['branchcode']),
+                    debit: parseFloat(getVal(r, ['debit'])) || 0, credit: parseFloat(getVal(r, ['credit'])) || 0,
+                    balance: firstBal || 0, finalBalance: secondBal || 0,
+                    head: getVal(r, ['head']), name: getVal(r, ['name']), remarks: getVal(r, ['remarks', 'remakrs'])
                 };
-
                 bulkBankOps.push({ updateOne: { filter: { transactionDate: tDate, description: desc, debit: doc.debit, credit: doc.credit }, update: { $set: doc }, upsert: true }});
             });
             if (bulkBankOps.length > 0) await BankTransaction.bulkWrite(bulkBankOps);
             return res.json({ message: "Bank Statement Attached Successfully!" });
         }
 
-        // 2. PROCESS SALES (TALLY FORMAT)
+        // 2. PROCESS SALES
         const salesTab = getSheetName(workbook, 'Sales');
         if (salesTab) {
             const sheet = workbook.Sheets[salesTab];
@@ -192,14 +199,16 @@ app.get('/api/finance/all-data', async (req, res) => {
         const startOfDay = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 0, 0, 0));
         const endOfDay = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 23, 59, 59));
 
+        // 💥 STRICT RULES FOR DATE MATCHING
         const matchMTDSales = { invoiceDate: { $gte: startOfMonth, $lte: endOfDay } };
-        const matchMTDPurchase = { matRecDate: { $gte: startOfMonth, $lte: endOfDay } };
+        const matchMTDPurchase = { matRecDate: { $gte: startOfMonth, $lte: endOfDay } }; // Purchase ONLY uses matRecDate
         const matchMTDBank = { transactionDate: { $gte: startOfMonth, $lte: endOfDay } };
 
         const receivables = await Invoice.find({}).sort({ invoiceDate: -1 });
         const payables = await Payable.find({}).sort({ matRecDate: -1 });
         const bankTransactions = await BankTransaction.find({}).sort({ transactionDate: -1 });
 
+        // 💥 STRICT SUMMARIES: Purchase sums Taxable Value, Sales sums Invoice Value
         const salesAnalysis = await Invoice.aggregate([
             { $match: matchMTDSales },
             { $group: { _id: '$marketier', mtd: { $sum: '$invoiceValue' }, today: { $sum: { $cond: [ { $and: [ { $gte: ['$invoiceDate', startOfDay] }, { $lte: ['$invoiceDate', endOfDay] } ] }, '$invoiceValue', 0 ] } } } }
@@ -232,9 +241,12 @@ app.put('/api/finance/update-record/:type/:id', async (req, res) => {
         const { type, id } = req.params;
         const { field, value } = req.body;
         let Model = type === 'Sales' ? Invoice : (type === 'Purchase' ? Payable : BankTransaction);
+        
         let parsedValue = value;
-        if (field.toLowerCase().includes('date')) parsedValue = parseExcelDate(value);
+        if (field === 'transactionDate') parsedValue = parseExcelDateTime(value);
+        else if (field.toLowerCase().includes('date')) parsedValue = parseExcelDate(value);
         else if (['invoiceValue', 'taxableValue', 'integratedTax', 'centralTax', 'stateTax', 'debit', 'credit', 'balance', 'finalBalance'].includes(field)) parsedValue = Number(value);
+        
         await Model.findByIdAndUpdate(id, { [field]: parsedValue });
         res.json({ message: "Cell Updated Successfully!" });
     } catch (error) { res.status(500).json({ error: "Failed to update record." }); }
