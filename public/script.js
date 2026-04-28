@@ -245,11 +245,42 @@ document.getElementById('manual-sale-form').addEventListener('submit', async (e)
     showToast("✅ Sale Saved"); document.getElementById('manual-sale-form').reset(); document.getElementById('s-customer-new').style.display = 'none'; loadFinanceData();
 });
 
-document.getElementById('manual-purchase-form').addEventListener('submit', async (e) => {
+// ... existing script code above ...
+
+document.getElementById('manual-bank-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const v = document.getElementById('p-vendor-select').value;
-    await fetch(`${API_BASE}/api/finance/manual-purchase`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gstin: document.getElementById('p-gstin').value, vendor: v === 'Other' ? document.getElementById('p-vendor-new').value : v, invoiceNumber: document.getElementById('p-invNo').value, invoiceDate: document.getElementById('p-date').value, matRecDate: document.getElementById('p-matDate').value || null, invoiceValue: parseFloat(document.getElementById('p-val').value) || 0, taxableValue: parseFloat(document.getElementById('p-tax').value) || 0, integratedTax: parseFloat(document.getElementById('p-igst').value) || 0, centralTax: parseFloat(document.getElementById('p-cgst').value) || 0, stateTax: parseFloat(document.getElementById('p-sgst').value) || 0, remarks: document.getElementById('p-remarks').value }) });
-    showToast("✅ Purchase Saved"); document.getElementById('manual-purchase-form').reset(); document.getElementById('p-vendor-new').style.display = 'none'; loadFinanceData();
+    
+    // Automatically route the amount to the correct debit/credit slot
+    const txType = document.getElementById('b-type').value;
+    const amount = parseFloat(document.getElementById('b-amount').value) || 0;
+    const debitVal = txType === 'Debit' ? amount : 0;
+    const creditVal = txType === 'Credit' ? amount : 0;
+
+    const newBankTx = {
+        transactionDate: document.getElementById('b-tDate').value,
+        valueDate: document.getElementById('b-vDate').value || null,
+        chequeNo: document.getElementById('b-cheque').value,
+        description: document.getElementById('b-desc').value,
+        branchCode: document.getElementById('b-branch').value,
+        head: document.getElementById('b-head').value,
+        name: document.getElementById('b-name').value,
+        debit: debitVal,
+        credit: creditVal,
+        balance: parseFloat(document.getElementById('b-bal').value) || 0,
+        finalBalance: parseFloat(document.getElementById('b-finalBal').value) || 0,
+        remarks: document.getElementById('b-remarks').value
+    };
+
+    await fetch(`${API_BASE}/api/finance/manual-bank`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(newBankTx) 
+    });
+    
+    showToast("✅ Bank Transaction Saved");
+    document.getElementById('manual-bank-form').reset();
+    loadFinanceData();
 });
 
 document.addEventListener('DOMContentLoaded', () => { document.getElementById('date-selector').value = ''; loadFinanceData(); });
+

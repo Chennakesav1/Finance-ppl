@@ -199,16 +199,14 @@ app.get('/api/finance/all-data', async (req, res) => {
         const startOfDay = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 0, 0, 0));
         const endOfDay = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 23, 59, 59));
 
-        // 💥 STRICT RULES FOR DATE MATCHING
         const matchMTDSales = { invoiceDate: { $gte: startOfMonth, $lte: endOfDay } };
-        const matchMTDPurchase = { matRecDate: { $gte: startOfMonth, $lte: endOfDay } }; // Purchase ONLY uses matRecDate
+        const matchMTDPurchase = { matRecDate: { $gte: startOfMonth, $lte: endOfDay } };
         const matchMTDBank = { transactionDate: { $gte: startOfMonth, $lte: endOfDay } };
 
         const receivables = await Invoice.find({}).sort({ invoiceDate: -1 });
         const payables = await Payable.find({}).sort({ matRecDate: -1 });
         const bankTransactions = await BankTransaction.find({}).sort({ transactionDate: -1 });
 
-        // 💥 STRICT SUMMARIES: Purchase sums Taxable Value, Sales sums Invoice Value
         const salesAnalysis = await Invoice.aggregate([
             { $match: matchMTDSales },
             { $group: { _id: '$marketier', mtd: { $sum: '$invoiceValue' }, today: { $sum: { $cond: [ { $and: [ { $gte: ['$invoiceDate', startOfDay] }, { $lte: ['$invoiceDate', endOfDay] } ] }, '$invoiceValue', 0 ] } } } }
@@ -235,6 +233,20 @@ app.get('/api/finance/all-data', async (req, res) => {
 
 app.post('/api/finance/manual-sale', async (req, res) => { await new Invoice({...req.body, invoiceDate: parseExcelDate(req.body.invoiceDate)}).save(); res.json({ message: "Manual Sale Added!" }); });
 app.post('/api/finance/manual-purchase', async (req, res) => { await new Payable({...req.body, invoiceDate: parseExcelDate(req.body.invoiceDate), matRecDate: parseExcelDate(req.body.matRecDate)}).save(); res.json({ message: "Manual Purchase Added!" }); });
+
+// 💥 NEW: ROUTE FOR MANUAL BANK ENTRY
+app.post('/api/finance/manual-bank', async (req, res) => { 
+    try {
+        const incomingData = { ...req.body };
+        // The HTML form sends a real datetime string (e.g., 2026-04-20T14:30), we just pass it to Date()
+        incomingData.transactionDate = new Date(req.body.transactionDate);
+        incomingData.valueDate = parseExcelDate(req.body.valueDate);
+        await new BankTransaction(incomingData).save(); 
+        res.json({ message: "Manual Bank Entry Added!" }); 
+    } catch (err) {
+        res.status(500).json({ error: "Failed to save bank entry" });
+    }
+});
 
 app.put('/api/finance/update-record/:type/:id', async (req, res) => {
     try {

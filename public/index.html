@@ -140,7 +140,8 @@
             <section id="manual" class="tab-content">
                 <h2>Add Manual Entries</h2>
                 <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                    <div class="card" style="flex: 1; min-width: 300px;">
+                    
+                    <div class="card" style="flex: 1; min-width: 300px; max-width: 450px;">
                         <h3>Add Manual Sale</h3>
                         <form id="manual-sale-form" class="vertical-form">
                             <label class="form-label">Date:</label><input type="date" id="s-date" required>
@@ -152,7 +153,8 @@
                             <button type="submit" class="btn-primary" style="margin-top: 10px;">Save Sale</button>
                         </form>
                     </div>
-                    <div class="card" style="flex: 1; min-width: 300px;">
+                    
+                    <div class="card" style="flex: 1; min-width: 300px; max-width: 450px;">
                         <h3>Add Manual Purchase</h3>
                         <form id="manual-purchase-form" class="vertical-form">
                             <label class="form-label">Trade/Legal name of the Supplier:</label><select id="p-vendor-select" onchange="handleVendorChange()" required><option value="" disabled selected>Select Supplier</option></select>
@@ -167,6 +169,51 @@
                             <button type="submit" class="btn-primary" style="margin-top: 10px;">Save Purchase</button>
                         </form>
                     </div>
+
+                    <div class="card" style="flex: 1; min-width: 300px; max-width: 450px;">
+                        <h3>Add Manual Bank Transaction</h3>
+                        <form id="manual-bank-form" class="vertical-form">
+                            <label class="form-label">Transaction Date & Time:</label>
+                            <input type="datetime-local" id="b-tDate" required>
+                            
+                            <label class="form-label">Value Date:</label>
+                            <input type="date" id="b-vDate" style="margin-bottom: 10px;">
+                            
+                            <input type="text" id="b-cheque" placeholder="Cheque No. (Optional)">
+                            <input type="text" id="b-desc" placeholder="Description" required>
+                            <input type="text" id="b-branch" placeholder="Branch Code (Optional)">
+                            <input type="text" id="b-head" placeholder="Head (Optional)">
+                            <input type="text" id="b-name" placeholder="Name (Optional)">
+                            
+                            <label class="form-label">Transaction Type:</label>
+                            <select id="b-type" required style="margin-bottom: 10px;">
+                                <option value="" disabled selected>Is this a Payment or Collection?</option>
+                                <option value="Debit">Debit (Payment)</option>
+                                <option value="Credit">Credit (Collection)</option>
+                            </select>
+
+                            <input type="number" id="b-amount" placeholder="Amount (₹)" required>
+                            <input type="number" id="b-bal" placeholder="Balance (₹)">
+                            <input type="number" id="b-finalBal" placeholder="Final Balance (₹)">
+                            
+                            <label class="form-label">Remarks:</label>
+                            <select id="b-remarks" required>
+                                <option value="" disabled selected>Select Category</option>
+                                <option value="OE">OE (Collection)</option>
+                                <option value="Retails">Retails (Collection)</option>
+                                <option value="SS Dealers">SS Dealers (Collection)</option>
+                                <option value="RM">RM (Payment)</option>
+                                <option value="Statutory">Statutory (Payment)</option>
+                                <option value="Tools /consu/R&M">Tools /consu/R&M (Payment)</option>
+                                <option value="Sundry Exp">Sundry Exp (Payment)</option>
+                                <option value="Freight">Freight (Payment)</option>
+                                <option value="Others">Others</option>
+                            </select>
+                            
+                            <button type="submit" class="btn-primary" style="margin-top: 10px;">Save Transaction</button>
+                        </form>
+                    </div>
+
                 </div>
             </section>
             <section id="upload" class="tab-content">
