@@ -9,14 +9,41 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>if (localStorage.getItem('precifast_auth') !== 'true') window.location.href = "login.html";</script>
     <style>
+        body { background-color: #f4f7fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .form-label { font-size: 13px; font-weight: bold; color: #2c3e50; margin-bottom: -10px; }
-        .search-bar { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; }
-        .export-btn { margin-left: 10px; padding: 8px 15px; background-color: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .export-btn.word { background-color: #2980b9; }
+        .search-bar { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #dce1e6; border-radius: 8px; font-size: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .export-btn { margin-left: 10px; padding: 10px 18px; background: linear-gradient(135deg, #f39c12, #e67e22); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(230, 126, 34, 0.2); transition: 0.3s; }
+        .export-btn.word { background: linear-gradient(135deg, #3498db, #2980b9); box-shadow: 0 4px 6px rgba(41, 128, 185, 0.2); }
+        .export-btn:hover { transform: translateY(-2px); }
         select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; font-size: 14px; }
+        
+        /* 💥 NEW: BEAUTIFUL SUMMARY DASHBOARD CARDS */
+        .summary-wrapper { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; }
+        .summary-card { background: #fff; border-radius: 12px; padding: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); border-top: 5px solid; }
+        
+        .card-sales { border-top-color: #3498db; }
+        .card-sales h2 { color: #3498db; }
+        .card-sales th { background-color: #ebf5fb; color: #2980b9; }
+
+        .card-purchases { border-top-color: #e67e22; }
+        .card-purchases h2 { color: #e67e22; }
+        .card-purchases th { background-color: #fef5e7; color: #d35400; }
+
+        .card-payments { border-top-color: #9b59b6; }
+        .card-payments h2 { color: #9b59b6; }
+        .card-payments th { background-color: #f5eef8; color: #8e44ad; }
+
+        .card-collections { border-top-color: #2ecc71; }
+        .card-collections h2 { color: #2ecc71; }
+        .card-collections th { background-color: #eafaf1; color: #27ae60; }
+
+        .data-table th, .data-table td { padding: 12px; border-bottom: 1px solid #ecf0f1; text-align: left; }
+        .data-table tfoot th { font-weight: bold; font-size: 16px; border-top: 2px solid #bdc3c7; }
+
+        /* EXCEL-STYLE EDITABLE CELL CSS */
         .editable-cell { cursor: text; transition: all 0.2s; border-bottom: 1px dotted transparent; }
-        .editable-cell:hover { background-color: #f1f8ff; border-bottom: 1px dotted #3498db; }
-        .editable-cell:focus { background-color: #fff; outline: 2px solid #3498db; border-radius: 3px; }
+        .editable-cell:hover { background-color: #f9fbff; border-bottom: 1px dotted #3498db; }
+        .editable-cell:focus { background-color: #fff; outline: 2px solid #3498db; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -31,7 +58,6 @@
                 <li onclick="switchTab('purchase')"><i class="fas fa-shopping-cart"></i> Purchase</li>
                 <li onclick="switchTab('payments')"><i class="fas fa-money-check-alt"></i> Payments</li>
                 <li onclick="switchTab('collections')"><i class="fas fa-hand-holding-usd"></i> Collections</li>
-                
                 <li onclick="switchTab('manual')"><i class="fas fa-edit"></i> Manual Entry</li>
                 <li onclick="switchTab('upload')"><i class="fas fa-file-excel"></i> Upload MIS</li>
                 <li onclick="logout()" style="margin-top: 30px; color: #e74c3c; border-top: 1px solid #34495e; padding-top: 20px;"><i class="fas fa-sign-out-alt"></i> Secure Logout</li>
@@ -39,52 +65,49 @@
         </nav>
 
         <main class="main-content">
-            <header>
-                <h1 id="page-title">Summary Dashboard</h1>
+            <header style="background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px 30px; display: flex; justify-content: space-between; align-items: center;">
+                <h1 id="page-title" style="margin:0; color: #2c3e50;">Summary Dashboard</h1>
                 <div class="month-filter-container">
-                    <label>Filter by Date: </label>
-                    <input type="date" id="date-selector" onchange="loadFinanceData()">
+                    <label style="font-weight: bold; color: #7f8c8d; margin-right: 10px;">Filter by Date: </label>
+                    <input type="date" id="date-selector" onchange="loadFinanceData()" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                     <button class="export-btn" onclick="downloadPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
                     <button class="export-btn word" onclick="downloadWord()"><i class="fas fa-file-word"></i> Word</button>
                 </div>
             </header>
 
             <section id="summary" class="tab-content active-tab">
-                <div id="summary-export-content" style="background: #fff; padding: 20px; border-radius: 8px;">
-                    <div class="analysis-container" style="display: flex; gap: 40px; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 350px;">
-                            <h2 style="margin-bottom: 15px; color: #2c3e50;">Sales Summary</h2>
-                            <table class="data-table" id="sales-summary-table">
-                                <thead><tr><th>Particulars</th><th>Today sales</th><th>MTD Total</th></tr></thead>
-                                <tbody></tbody>
-                                <tfoot><tr><th>Grand Total</th><th id="s-today-total">₹0</th><th id="s-mtd-total">₹0</th></tr></tfoot>
-                            </table>
-                        </div>
-                        <div style="flex: 1; min-width: 350px;">
-                            <h2 style="margin-bottom: 15px; color: #2c3e50;">Purchases Summary</h2>
-                            <table class="data-table" id="purchase-summary-table">
-                                <thead><tr><th>Particulars</th><th>Today GRN</th><th>MTD GRN</th></tr></thead>
-                                <tbody></tbody>
-                                <tfoot><tr><th>Grand Total</th><th id="p-today-total">₹0</th><th id="p-mtd-total">₹0</th></tr></tfoot>
-                            </table>
-                        </div>
-                        
-                        <div style="flex: 1; min-width: 350px; margin-top: 30px;">
-                            <h2 style="margin-bottom: 15px; color: #2c3e50;">Payments Summary</h2>
-                            <table class="data-table" id="payments-summary-table">
-                                <thead><tr><th>Particulars</th><th>Today Payments</th><th>MTD Payments</th></tr></thead>
-                                <tbody></tbody>
-                                <tfoot><tr><th>Grand Total</th><th id="pay-today-total">₹0</th><th id="pay-mtd-total">₹0</th></tr></tfoot>
-                            </table>
-                        </div>
-                        <div style="flex: 1; min-width: 350px; margin-top: 30px;">
-                            <h2 style="margin-bottom: 15px; color: #2c3e50;">Collections Summary</h2>
-                            <table class="data-table" id="collections-summary-table">
-                                <thead><tr><th>Particulars</th><th>Today Collections</th><th>MTD Collections</th></tr></thead>
-                                <tbody></tbody>
-                                <tfoot><tr><th>Grand Total</th><th id="col-today-total">₹0</th><th id="col-mtd-total">₹0</th></tr></tfoot>
-                            </table>
-                        </div>
+                <div id="summary-export-content" class="summary-wrapper">
+                    <div class="summary-card card-sales">
+                        <h2><i class="fas fa-chart-line"></i> Sales Summary</h2>
+                        <table class="data-table" id="sales-summary-table">
+                            <thead><tr><th>Particulars</th><th>Today sales</th><th>MTD Total</th></tr></thead>
+                            <tbody></tbody>
+                            <tfoot><tr><th>Grand Total</th><th id="s-today-total">₹0</th><th id="s-mtd-total">₹0</th></tr></tfoot>
+                        </table>
+                    </div>
+                    <div class="summary-card card-purchases">
+                        <h2><i class="fas fa-shopping-cart"></i> Purchases Summary</h2>
+                        <table class="data-table" id="purchase-summary-table">
+                            <thead><tr><th>Particulars</th><th>Today GRN</th><th>MTD GRN</th></tr></thead>
+                            <tbody></tbody>
+                            <tfoot><tr><th>Grand Total</th><th id="p-today-total">₹0</th><th id="p-mtd-total">₹0</th></tr></tfoot>
+                        </table>
+                    </div>
+                    <div class="summary-card card-payments">
+                        <h2><i class="fas fa-money-check-alt"></i> Payments Summary</h2>
+                        <table class="data-table" id="payments-summary-table">
+                            <thead><tr><th>Particulars</th><th>Today Payments</th><th>MTD Payments</th></tr></thead>
+                            <tbody></tbody>
+                            <tfoot><tr><th>Grand Total</th><th id="pay-today-total">₹0</th><th id="pay-mtd-total">₹0</th></tr></tfoot>
+                        </table>
+                    </div>
+                    <div class="summary-card card-collections">
+                        <h2><i class="fas fa-hand-holding-usd"></i> Collections Summary</h2>
+                        <table class="data-table" id="collections-summary-table">
+                            <thead><tr><th>Particulars</th><th>Today Collections</th><th>MTD Collections</th></tr></thead>
+                            <tbody></tbody>
+                            <tfoot><tr><th>Grand Total</th><th id="col-today-total">₹0</th><th id="col-mtd-total">₹0</th></tr></tfoot>
+                        </table>
                     </div>
                 </div>
             </section>
@@ -94,7 +117,7 @@
                 <input type="text" id="sales-search" class="search-bar" placeholder="🔍 Search Sales by Customer, Invoice No..." onkeyup="filterTable('sales-body', 'sales-search')">
                 <div class="table-wrapper">
                     <table class="data-table">
-                        <thead><tr><th>S.No</th><th>Date</th><th>Particulars (Customer)</th><th>Vch No.</th><th>Value (₹)</th><th>Remarks</th></tr></thead>
+                        <thead style="background:#ebf5fb; color:#2980b9;"><tr><th>S.No</th><th>Date</th><th>Particulars (Customer)</th><th>Vch No.</th><th>Value (₹)</th><th>Remarks</th></tr></thead>
                         <tbody id="sales-body"></tbody>
                     </table>
                 </div>
@@ -105,7 +128,7 @@
                 <input type="text" id="purchase-search" class="search-bar" placeholder="🔍 Search Purchases by Supplier, GSTIN..." onkeyup="filterTable('purchase-body', 'purchase-search')">
                 <div class="table-wrapper">
                     <table class="data-table">
-                        <thead>
+                        <thead style="background:#fef5e7; color:#d35400;">
                             <tr><th>S.No</th><th>GSTIN of supplier</th><th>Trade/Legal name of the Supplier</th><th>Invoice number</th><th>Invoice Date</th><th>Mat. rec. Date</th><th>Invoice Value (₹)</th><th>Taxable Value (₹)</th><th>Integrated Tax (₹)</th><th>Central Tax (₹)</th><th>State/UT tax (₹)</th><th>Remarks</th></tr>
                         </thead>
                         <tbody id="purchase-body"></tbody>
@@ -118,7 +141,7 @@
                 <input type="text" id="payments-search" class="search-bar" placeholder="🔍 Search Payments by Name, Cheque, or Description..." onkeyup="filterTable('payments-body', 'payments-search')">
                 <div class="table-wrapper">
                     <table class="data-table">
-                        <thead><tr><th>S.No</th><th>Trans. Date</th><th>Value Date</th><th>Cheque No.</th><th>Description</th><th>Branch</th><th>Head</th><th>Name</th><th>Remarks</th><th>Debit (₹)</th><th>Balance (₹)</th></tr></thead>
+                        <thead style="background:#f5eef8; color:#8e44ad;"><tr><th>S.No</th><th>Trans. Date</th><th>Value Date</th><th>Cheque No.</th><th>Description</th><th>Branch</th><th>Head</th><th>Name</th><th>Remarks</th><th>Debit (₹)</th><th>Balance (₹)</th></tr></thead>
                         <tbody id="payments-body"></tbody>
                     </table>
                 </div>
@@ -129,7 +152,7 @@
                 <input type="text" id="collections-search" class="search-bar" placeholder="🔍 Search Collections by Name, Cheque, or Description..." onkeyup="filterTable('collections-body', 'collections-search')">
                 <div class="table-wrapper">
                     <table class="data-table">
-                        <thead><tr><th>S.No</th><th>Trans. Date</th><th>Value Date</th><th>Cheque No.</th><th>Description</th><th>Branch</th><th>Head</th><th>Name</th><th>Remarks</th><th>Credit (₹)</th><th>Balance (₹)</th></tr></thead>
+                        <thead style="background:#eafaf1; color:#27ae60;"><tr><th>S.No</th><th>Trans. Date</th><th>Value Date</th><th>Cheque No.</th><th>Description</th><th>Branch</th><th>Head</th><th>Name</th><th>Remarks</th><th>Credit (₹)</th><th>Balance (₹)</th></tr></thead>
                         <tbody id="collections-body"></tbody>
                     </table>
                 </div>
@@ -167,7 +190,6 @@
                     </div>
                 </div>
             </section>
-
             <section id="upload" class="tab-content">
                 <h2>Upload Bank Statement OR MIS Excel</h2>
                 <div class="card" style="max-width: 500px; margin-top: 20px;">

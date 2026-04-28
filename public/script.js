@@ -7,7 +7,6 @@ function switchTab(tabId) {
     document.querySelectorAll('.nav-links li').forEach(l => l.classList.remove('active'));
     document.getElementById(tabId).classList.add('active-tab');
     event.currentTarget.classList.add('active');
-    
     const titles = { 'summary':'Summary Dashboard', 'sales':'Sales Register', 'purchase':'Purchase Register', 'payments':'Payments Register', 'collections':'Collections Register', 'manual':'Manual Entry', 'upload':'Upload Data'};
     document.getElementById('page-title').innerText = titles[tabId];
 }
@@ -115,56 +114,51 @@ async function loadFinanceData() {
         const analysis = data.analysis || { salesAnalysis: [], purchaseAnalysis: [], paymentAnalysis: [], collectionAnalysis: [] };
         const tables = data.tables || { receivables: [], payables: [], bankTransactions: [] };
 
-        // DROPDOWNS
         const uniqueCustomers = [...new Set(tables.receivables.map(item => item.customer).filter(Boolean))];
         document.getElementById('s-customer-select').innerHTML = '<option value="" disabled selected>Select Customer</option>' + uniqueCustomers.map(c => `<option value="${c}">${c}</option>`).join('') + '<option value="Other" style="font-weight:bold; color:#3498db;">+ Other (Add New)</option>';
         vendorDetails = {};
         tables.payables.forEach(p => { if (p.vendor && !vendorDetails[p.vendor]) vendorDetails[p.vendor] = p.gstin || ''; });
         document.getElementById('p-vendor-select').innerHTML = '<option value="" disabled selected>Select Supplier</option>' + Object.keys(vendorDetails).map(v => `<option value="${v}">${v}</option>`).join('') + '<option value="Other" style="font-weight:bold; color:#3498db;">+ Other (Add New)</option>';
 
-        // SALES SUMMARY
         const salesCats = ['OE', 'Retails', 'SS Dealers'];
         let sTodayTotal = 0, sMtdTotal = 0;
         document.querySelector('#sales-summary-table tbody').innerHTML = salesCats.map(cat => {
             const row = analysis.salesAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
             sTodayTotal += row.today; sMtdTotal += row.mtd;
-            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString(undefined, {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString(undefined, {minimumFractionDigits: 2})}</td></tr>`;
+            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>`;
         }).join('');
-        document.getElementById('s-today-total').innerText = `₹${sTodayTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-        document.getElementById('s-mtd-total').innerText = `₹${sMtdTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        document.getElementById('s-today-total').innerText = `₹${sTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('s-mtd-total').innerText = `₹${sMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // PURCHASE SUMMARY
         const purCats = ['Consumables', 'Logistics', 'Maintanance', 'Outsourcing', 'Packing consu.', 'RM', 'Tools'];
         let pTodayTotal = 0, pMtdTotal = 0;
         document.querySelector('#purchase-summary-table tbody').innerHTML = purCats.map(cat => {
             const row = analysis.purchaseAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
             pTodayTotal += row.today; pMtdTotal += row.mtd;
-            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString(undefined, {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString(undefined, {minimumFractionDigits: 2})}</td></tr>`;
+            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>`;
         }).join('');
-        document.getElementById('p-today-total').innerText = `₹${pTodayTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-        document.getElementById('p-mtd-total').innerText = `₹${pMtdTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        document.getElementById('p-today-total').innerText = `₹${pTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('p-mtd-total').innerText = `₹${pMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // 💥 NEW: PAYMENTS SUMMARY
         const payCats = ['RM', 'Statutory', 'Tools /consu/R&M', 'Others', 'Sundry Exp', 'Freight'];
         let payTodayTotal = 0, payMtdTotal = 0;
         document.querySelector('#payments-summary-table tbody').innerHTML = payCats.map(cat => {
             const row = analysis.paymentAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
             payTodayTotal += row.today; payMtdTotal += row.mtd;
-            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString(undefined, {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString(undefined, {minimumFractionDigits: 2})}</td></tr>`;
+            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>`;
         }).join('');
-        document.getElementById('pay-today-total').innerText = `₹${payTodayTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-        document.getElementById('pay-mtd-total').innerText = `₹${payMtdTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        document.getElementById('pay-today-total').innerText = `₹${payTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('pay-mtd-total').innerText = `₹${payMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // 💥 NEW: COLLECTIONS SUMMARY
         const colCats = ['OE', 'Retails', 'SS Dealers', 'Others'];
         let colTodayTotal = 0, colMtdTotal = 0;
         document.querySelector('#collections-summary-table tbody').innerHTML = colCats.map(cat => {
             const row = analysis.collectionAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
             colTodayTotal += row.today; colMtdTotal += row.mtd;
-            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString(undefined, {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString(undefined, {minimumFractionDigits: 2})}</td></tr>`;
+            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>`;
         }).join('');
-        document.getElementById('col-today-total').innerText = `₹${colTodayTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-        document.getElementById('col-mtd-total').innerText = `₹${colMtdTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        document.getElementById('col-today-total').innerText = `₹${colTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('col-mtd-total').innerText = `₹${colMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
         // TABLES (With contenteditable)
         document.getElementById('sales-body').innerHTML = tables.receivables.map((inv, index) => `
@@ -173,7 +167,7 @@ async function loadFinanceData() {
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceDate', 'Sales', this)">${formatDate(inv.invoiceDate)}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'customer', 'Sales', this)">${inv.customer || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceNo', 'Sales', this)">${inv.invoiceNo || ''}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceValue', 'Sales', this)">₹${(inv.invoiceValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceValue', 'Sales', this)">₹${(inv.invoiceValue || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'marketier', 'Sales', this)">${inv.marketier || ''}</td>
             </tr>
         `).join('');
@@ -186,16 +180,15 @@ async function loadFinanceData() {
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'invoiceNumber', 'Purchase', this)">${pay.invoiceNumber || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'invoiceDate', 'Purchase', this)">${formatDate(pay.invoiceDate)}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'matRecDate', 'Purchase', this)">${formatDate(pay.matRecDate)}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'invoiceValue', 'Purchase', this)">₹${(pay.invoiceValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'taxableValue', 'Purchase', this)">₹${(pay.taxableValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'integratedTax', 'Purchase', this)">₹${(pay.integratedTax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'centralTax', 'Purchase', this)">₹${(pay.centralTax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'stateTax', 'Purchase', this)">₹${(pay.stateTax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'invoiceValue', 'Purchase', this)">₹${(pay.invoiceValue || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'taxableValue', 'Purchase', this)">₹${(pay.taxableValue || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'integratedTax', 'Purchase', this)">₹${(pay.integratedTax || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'centralTax', 'Purchase', this)">₹${(pay.centralTax || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'stateTax', 'Purchase', this)">₹${(pay.stateTax || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'remarks', 'Purchase', this)">${pay.remarks || ''}</td>
             </tr>
         `).join('');
 
-        // 💥 NEW: PAYMENTS TABLE
         const payments = tables.bankTransactions.filter(tx => tx.debit > 0);
         document.getElementById('payments-body').innerHTML = payments.map((tx, index) => `
             <tr>
@@ -208,12 +201,11 @@ async function loadFinanceData() {
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'head', 'Bank', this)">${tx.head || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'name', 'Bank', this)">${tx.name || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'remarks', 'Bank', this)">${tx.remarks || ''}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'debit', 'Bank', this)">₹${(tx.debit || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'balance', 'Bank', this)">₹${(tx.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'debit', 'Bank', this)">₹${(tx.debit || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'balance', 'Bank', this)">₹${(tx.balance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             </tr>
         `).join('');
 
-        // 💥 NEW: COLLECTIONS TABLE
         const collections = tables.bankTransactions.filter(tx => tx.credit > 0);
         document.getElementById('collections-body').innerHTML = collections.map((tx, index) => `
             <tr>
@@ -226,8 +218,8 @@ async function loadFinanceData() {
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'head', 'Bank', this)">${tx.head || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'name', 'Bank', this)">${tx.name || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'remarks', 'Bank', this)">${tx.remarks || ''}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'credit', 'Bank', this)">₹${(tx.credit || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'balance', 'Bank', this)">₹${(tx.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'credit', 'Bank', this)">₹${(tx.credit || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'balance', 'Bank', this)">₹${(tx.balance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             </tr>
         `).join('');
 
