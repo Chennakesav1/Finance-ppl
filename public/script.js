@@ -1,5 +1,4 @@
 function logout() { localStorage.removeItem('precifast_auth'); window.location.href = "login.html"; }
-
 const API_BASE = '';
 let vendorDetails = {};
 
@@ -8,6 +7,9 @@ function switchTab(tabId) {
     document.querySelectorAll('.nav-links li').forEach(l => l.classList.remove('active'));
     document.getElementById(tabId).classList.add('active-tab');
     event.currentTarget.classList.add('active');
+    
+    const titles = { 'summary':'Summary Dashboard', 'sales':'Sales Register', 'purchase':'Purchase Register', 'payments':'Payments Register', 'collections':'Collections Register', 'manual':'Manual Entry', 'upload':'Upload Data'};
+    document.getElementById('page-title').innerText = titles[tabId];
 }
 
 function showToast(message, isError = false) {
@@ -44,12 +46,9 @@ function handleCustomerChange() {
     const select = document.getElementById('s-customer-select');
     const newCustomerInput = document.getElementById('s-customer-new');
     if (select.value === 'Other') {
-        newCustomerInput.style.display = 'block';
-        newCustomerInput.required = true;
+        newCustomerInput.style.display = 'block'; newCustomerInput.required = true;
     } else {
-        newCustomerInput.style.display = 'none';
-        newCustomerInput.required = false;
-        newCustomerInput.value = '';
+        newCustomerInput.style.display = 'none'; newCustomerInput.required = false; newCustomerInput.value = '';
     }
     document.getElementById('s-invNo').value = "INV-S-" + Math.floor(100000 + Math.random() * 900000);
 }
@@ -59,13 +58,9 @@ function handleVendorChange() {
     const newVendorInput = document.getElementById('p-vendor-new');
     const gstinInput = document.getElementById('p-gstin');
     if (select.value === 'Other') {
-        newVendorInput.style.display = 'block';
-        newVendorInput.required = true;
-        gstinInput.value = ''; 
+        newVendorInput.style.display = 'block'; newVendorInput.required = true; gstinInput.value = ''; 
     } else {
-        newVendorInput.style.display = 'none';
-        newVendorInput.required = false;
-        newVendorInput.value = '';
+        newVendorInput.style.display = 'none'; newVendorInput.required = false; newVendorInput.value = '';
         if (vendorDetails[select.value]) gstinInput.value = vendorDetails[select.value];
     }
     document.getElementById('p-invNo').value = "INV-P-" + Math.floor(100000 + Math.random() * 900000);
@@ -74,63 +69,35 @@ function handleVendorChange() {
 function autoCalculatePurchase() {
     const taxableValue = parseFloat(document.getElementById('p-tax').value) || 0;
     const igst = parseFloat((taxableValue * 0.18).toFixed(2));
-    const invoiceTotal = parseFloat((taxableValue + igst).toFixed(2));
     document.getElementById('p-igst').value = igst;
-    document.getElementById('p-val').value = invoiceTotal;
+    document.getElementById('p-val').value = parseFloat((taxableValue + igst).toFixed(2));
 }
 
-function downloadPDF() {
-    const element = document.getElementById('summary-export-content');
-    html2pdf().set({ margin: 0.5, filename: `Summary_Report.pdf`, html2canvas: { scale: 2 }, jsPDF: { orientation: 'landscape' } }).from(element).save();
-}
-
+function downloadPDF() { html2pdf().set({ margin: 0.5, filename: `Summary_Report.pdf`, html2canvas: { scale: 2 }, jsPDF: { orientation: 'landscape' } }).from(document.getElementById('summary-export-content')).save(); }
 function downloadWord() {
-    const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Summary Report</title><style>table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-family: Arial; } th, td { border: 1px solid #000; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style></head><body>`;
-    const fullHtml = header + document.getElementById("summary-export-content").innerHTML + "</body></html>";
-    const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword' });
+    const fullHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Summary Report</title><style>table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-family: Arial; } th, td { border: 1px solid #000; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style></head><body>` + document.getElementById("summary-export-content").innerHTML + "</body></html>";
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
+    link.href = URL.createObjectURL(new Blob(['\ufeff', fullHtml], { type: 'application/msword' }));
     link.download = `Summary_Report.doc`;
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 
-// 💥 THE NEW EXCEL-LIKE EDIT FUNCTION
 function cellKeydown(event, id, field, type, cell) {
     if (event.key === 'Enter') {
-        event.preventDefault(); // Stop new line from forming
-        cell.blur(); // Un-focus the cell
-        
+        event.preventDefault(); 
+        cell.blur(); 
         if (confirm("Are you sure you want to permanently save this change?")) {
             let newValue = cell.innerText.trim();
-            
-            // If it's a date formatted as DD/MM/YYYY, fix it for the database
             if (field.toLowerCase().includes('date')) {
                 const parts = newValue.split('/');
                 if (parts.length === 3) newValue = `${parts[2]}-${parts[1]}-${parts[0]}`;
-            } else {
-                // If it is a currency field, safely strip the ₹ and commas
-                if (['invoiceValue', 'taxableValue', 'integratedTax', 'centralTax', 'stateTax'].includes(field)) {
-                    newValue = newValue.replace(/[^0-9.-]+/g, ""); 
-                }
+            } else if (['invoiceValue', 'taxableValue', 'integratedTax', 'centralTax', 'stateTax', 'debit', 'credit', 'balance'].includes(field)) {
+                newValue = newValue.replace(/[^0-9.-]+/g, ""); 
             }
-
-            fetch(`${API_BASE}/api/finance/update-record/${type}/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ field, value: newValue })
-            })
-            .then(res => res.json())
-            .then(data => {
-                showToast("✅ " + data.message);
-                loadFinanceData(); // Reload safely to update formulas
-            })
-            .catch(err => {
-                showToast("❌ Failed to update.", true);
-                loadFinanceData(); 
-            });
-        } else {
-            loadFinanceData(); // User clicked Cancel, restore original value
-        }
+            fetch(`${API_BASE}/api/finance/update-record/${type}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field, value: newValue }) })
+            .then(res => res.json()).then(data => { showToast("✅ " + data.message); loadFinanceData(); })
+            .catch(err => { showToast("❌ Failed to update.", true); loadFinanceData(); });
+        } else loadFinanceData();
     }
 }
 
@@ -145,23 +112,17 @@ async function loadFinanceData() {
         if (data.error) return;
         if (!selectedDate && data.currentDate) dateSelector.value = data.currentDate;
 
-        const analysis = data.analysis || { salesAnalysis: [], purchaseAnalysis: [] };
-        const tables = data.tables || { receivables: [], payables: [] };
+        const analysis = data.analysis || { salesAnalysis: [], purchaseAnalysis: [], paymentAnalysis: [], collectionAnalysis: [] };
+        const tables = data.tables || { receivables: [], payables: [], bankTransactions: [] };
 
+        // DROPDOWNS
         const uniqueCustomers = [...new Set(tables.receivables.map(item => item.customer).filter(Boolean))];
-        const customerSelect = document.getElementById('s-customer-select');
-        customerSelect.innerHTML = '<option value="" disabled selected>Select Customer</option>' + 
-                                   uniqueCustomers.map(c => `<option value="${c}">${c}</option>`).join('') +
-                                   '<option value="Other" style="font-weight:bold; color:#3498db;">+ Other (Add New)</option>';
-
+        document.getElementById('s-customer-select').innerHTML = '<option value="" disabled selected>Select Customer</option>' + uniqueCustomers.map(c => `<option value="${c}">${c}</option>`).join('') + '<option value="Other" style="font-weight:bold; color:#3498db;">+ Other (Add New)</option>';
         vendorDetails = {};
         tables.payables.forEach(p => { if (p.vendor && !vendorDetails[p.vendor]) vendorDetails[p.vendor] = p.gstin || ''; });
-        
-        const vendorSelect = document.getElementById('p-vendor-select');
-        vendorSelect.innerHTML = '<option value="" disabled selected>Select Supplier</option>' + 
-                                 Object.keys(vendorDetails).map(v => `<option value="${v}">${v}</option>`).join('') +
-                                 '<option value="Other" style="font-weight:bold; color:#3498db;">+ Other (Add New)</option>';
+        document.getElementById('p-vendor-select').innerHTML = '<option value="" disabled selected>Select Supplier</option>' + Object.keys(vendorDetails).map(v => `<option value="${v}">${v}</option>`).join('') + '<option value="Other" style="font-weight:bold; color:#3498db;">+ Other (Add New)</option>';
 
+        // SALES SUMMARY
         const salesCats = ['OE', 'Retails', 'SS Dealers'];
         let sTodayTotal = 0, sMtdTotal = 0;
         document.querySelector('#sales-summary-table tbody').innerHTML = salesCats.map(cat => {
@@ -172,6 +133,7 @@ async function loadFinanceData() {
         document.getElementById('s-today-total').innerText = `₹${sTodayTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
         document.getElementById('s-mtd-total').innerText = `₹${sMtdTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
 
+        // PURCHASE SUMMARY
         const purCats = ['Consumables', 'Logistics', 'Maintanance', 'Outsourcing', 'Packing consu.', 'RM', 'Tools'];
         let pTodayTotal = 0, pMtdTotal = 0;
         document.querySelector('#purchase-summary-table tbody').innerHTML = purCats.map(cat => {
@@ -182,7 +144,29 @@ async function loadFinanceData() {
         document.getElementById('p-today-total').innerText = `₹${pTodayTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
         document.getElementById('p-mtd-total').innerText = `₹${pMtdTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
 
-        // 💥 TABLES ARE NOW FULLY EDITABLE VIA contenteditable="true"
+        // 💥 NEW: PAYMENTS SUMMARY
+        const payCats = ['RM', 'Statutory', 'Tools /consu/R&M', 'Others', 'Sundry Exp', 'Freight'];
+        let payTodayTotal = 0, payMtdTotal = 0;
+        document.querySelector('#payments-summary-table tbody').innerHTML = payCats.map(cat => {
+            const row = analysis.paymentAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
+            payTodayTotal += row.today; payMtdTotal += row.mtd;
+            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString(undefined, {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString(undefined, {minimumFractionDigits: 2})}</td></tr>`;
+        }).join('');
+        document.getElementById('pay-today-total').innerText = `₹${payTodayTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        document.getElementById('pay-mtd-total').innerText = `₹${payMtdTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+
+        // 💥 NEW: COLLECTIONS SUMMARY
+        const colCats = ['OE', 'Retails', 'SS Dealers', 'Others'];
+        let colTodayTotal = 0, colMtdTotal = 0;
+        document.querySelector('#collections-summary-table tbody').innerHTML = colCats.map(cat => {
+            const row = analysis.collectionAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
+            colTodayTotal += row.today; colMtdTotal += row.mtd;
+            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString(undefined, {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString(undefined, {minimumFractionDigits: 2})}</td></tr>`;
+        }).join('');
+        document.getElementById('col-today-total').innerText = `₹${colTodayTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        document.getElementById('col-mtd-total').innerText = `₹${colMtdTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+
+        // TABLES (With contenteditable)
         document.getElementById('sales-body').innerHTML = tables.receivables.map((inv, index) => `
             <tr>
                 <td><strong>${index + 1}</strong></td>
@@ -211,82 +195,74 @@ async function loadFinanceData() {
             </tr>
         `).join('');
 
+        // 💥 NEW: PAYMENTS TABLE
+        const payments = tables.bankTransactions.filter(tx => tx.debit > 0);
+        document.getElementById('payments-body').innerHTML = payments.map((tx, index) => `
+            <tr>
+                <td><strong>${index + 1}</strong></td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'transactionDate', 'Bank', this)">${formatDate(tx.transactionDate)}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'valueDate', 'Bank', this)">${formatDate(tx.valueDate)}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'chequeNo', 'Bank', this)">${tx.chequeNo || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'description', 'Bank', this)">${tx.description || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'branchCode', 'Bank', this)">${tx.branchCode || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'head', 'Bank', this)">${tx.head || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'name', 'Bank', this)">${tx.name || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'remarks', 'Bank', this)">${tx.remarks || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'debit', 'Bank', this)">₹${(tx.debit || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'balance', 'Bank', this)">₹${(tx.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+            </tr>
+        `).join('');
+
+        // 💥 NEW: COLLECTIONS TABLE
+        const collections = tables.bankTransactions.filter(tx => tx.credit > 0);
+        document.getElementById('collections-body').innerHTML = collections.map((tx, index) => `
+            <tr>
+                <td><strong>${index + 1}</strong></td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'transactionDate', 'Bank', this)">${formatDate(tx.transactionDate)}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'valueDate', 'Bank', this)">${formatDate(tx.valueDate)}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'chequeNo', 'Bank', this)">${tx.chequeNo || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'description', 'Bank', this)">${tx.description || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'branchCode', 'Bank', this)">${tx.branchCode || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'head', 'Bank', this)">${tx.head || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'name', 'Bank', this)">${tx.name || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'remarks', 'Bank', this)">${tx.remarks || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'credit', 'Bank', this)">₹${(tx.credit || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'balance', 'Bank', this)">₹${(tx.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+            </tr>
+        `).join('');
+
     } catch (error) { console.error(error); }
 }
 
 document.getElementById('upload-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const uploadBtn = document.getElementById('upload-btn');
-    uploadBtn.innerText = "⏳ Processing...";
-    uploadBtn.style.backgroundColor = "#f39c12"; 
-    uploadBtn.disabled = true; 
+    uploadBtn.innerText = "⏳ Processing..."; uploadBtn.style.backgroundColor = "#f39c12"; uploadBtn.disabled = true; 
 
-    const formData = new FormData();
-    formData.append('file', document.getElementById('file-input').files[0]);
-    
+    const formData = new FormData(); formData.append('file', document.getElementById('file-input').files[0]);
     try {
         const res = await fetch(`${API_BASE}/api/finance/upload-excel`, { method: 'POST', body: formData });
         const result = await res.json();
-        
-        uploadBtn.innerText = "Upload & Sync Data";
-        uploadBtn.style.backgroundColor = "#3498db";
-        uploadBtn.disabled = false;
-        showToast("✅ " + result.message);
-        document.getElementById('date-selector').value = ''; 
-        loadFinanceData();
+        uploadBtn.innerText = "Upload & Sync Data"; uploadBtn.style.backgroundColor = "#3498db"; uploadBtn.disabled = false;
+        showToast("✅ " + result.message); document.getElementById('date-selector').value = ''; loadFinanceData();
     } catch (err) { 
-        uploadBtn.innerText = "Upload & Sync Data";
-        uploadBtn.style.backgroundColor = "#3498db";
-        uploadBtn.disabled = false;
+        uploadBtn.innerText = "Upload & Sync Data"; uploadBtn.style.backgroundColor = "#3498db"; uploadBtn.disabled = false;
         showToast("❌ Upload Failed.", true); 
     }
 });
 
 document.getElementById('manual-sale-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const custSelect = document.getElementById('s-customer-select').value;
-    const finalCustomer = custSelect === 'Other' ? document.getElementById('s-customer-new').value : custSelect;
-
-    const newSale = {
-        invoiceDate: document.getElementById('s-date').value,
-        customer: finalCustomer,
-        invoiceNo: document.getElementById('s-invNo').value,
-        invoiceValue: parseFloat(document.getElementById('s-val').value),
-        marketier: document.getElementById('s-marketier').value 
-    };
-    await fetch(`${API_BASE}/api/finance/manual-sale`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newSale) });
-    showToast("✅ Sale Saved");
-    document.getElementById('manual-sale-form').reset();
-    document.getElementById('s-customer-new').style.display = 'none';
-    loadFinanceData();
+    const c = document.getElementById('s-customer-select').value;
+    await fetch(`${API_BASE}/api/finance/manual-sale`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ invoiceDate: document.getElementById('s-date').value, customer: c === 'Other' ? document.getElementById('s-customer-new').value : c, invoiceNo: document.getElementById('s-invNo').value, invoiceValue: parseFloat(document.getElementById('s-val').value), marketier: document.getElementById('s-marketier').value }) });
+    showToast("✅ Sale Saved"); document.getElementById('manual-sale-form').reset(); document.getElementById('s-customer-new').style.display = 'none'; loadFinanceData();
 });
 
 document.getElementById('manual-purchase-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const vendSelect = document.getElementById('p-vendor-select').value;
-    const finalVendor = vendSelect === 'Other' ? document.getElementById('p-vendor-new').value : vendSelect;
-
-    const newPurchase = {
-        gstin: document.getElementById('p-gstin').value,
-        vendor: finalVendor,
-        invoiceNumber: document.getElementById('p-invNo').value,
-        invoiceDate: document.getElementById('p-date').value,
-        matRecDate: document.getElementById('p-matDate').value || null,
-        invoiceValue: parseFloat(document.getElementById('p-val').value) || 0,
-        taxableValue: parseFloat(document.getElementById('p-tax').value) || 0,
-        integratedTax: parseFloat(document.getElementById('p-igst').value) || 0,
-        centralTax: parseFloat(document.getElementById('p-cgst').value) || 0,
-        stateTax: parseFloat(document.getElementById('p-sgst').value) || 0,
-        remarks: document.getElementById('p-remarks').value 
-    };
-    await fetch(`${API_BASE}/api/finance/manual-purchase`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newPurchase) });
-    showToast("✅ Purchase Saved");
-    document.getElementById('manual-purchase-form').reset();
-    document.getElementById('p-vendor-new').style.display = 'none';
-    loadFinanceData();
+    const v = document.getElementById('p-vendor-select').value;
+    await fetch(`${API_BASE}/api/finance/manual-purchase`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gstin: document.getElementById('p-gstin').value, vendor: v === 'Other' ? document.getElementById('p-vendor-new').value : v, invoiceNumber: document.getElementById('p-invNo').value, invoiceDate: document.getElementById('p-date').value, matRecDate: document.getElementById('p-matDate').value || null, invoiceValue: parseFloat(document.getElementById('p-val').value) || 0, taxableValue: parseFloat(document.getElementById('p-tax').value) || 0, integratedTax: parseFloat(document.getElementById('p-igst').value) || 0, centralTax: parseFloat(document.getElementById('p-cgst').value) || 0, stateTax: parseFloat(document.getElementById('p-sgst').value) || 0, remarks: document.getElementById('p-remarks').value }) });
+    showToast("✅ Purchase Saved"); document.getElementById('manual-purchase-form').reset(); document.getElementById('p-vendor-new').style.display = 'none'; loadFinanceData();
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('date-selector').value = ''; 
-    loadFinanceData();
-});
+document.addEventListener('DOMContentLoaded', () => { document.getElementById('date-selector').value = ''; loadFinanceData(); });

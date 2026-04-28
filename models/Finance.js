@@ -1,16 +1,13 @@
 const mongoose = require('mongoose');
 
-// STRICTLY NEW TALLY FORMAT FOR SALES
 const invoiceSchema = new mongoose.Schema({
-    invoiceDate: Date,            // "Date"
-    customer: String,             // "Particulars"
-    invoiceNo: String,            // "Vch No."
-    invoiceValue: Number,         // "Credit" or "Debit"
-    marketier: String,            // "Remakrs"
-       // Kept for inline payment editing
+    invoiceDate: Date,
+    customer: String,
+    invoiceNo: String,
+    invoiceValue: Number,
+    marketier: String
 });
 
-// FULL FORMAT FOR PURCHASES (Unchanged)
 const payableSchema = new mongoose.Schema({
     gstin: String,
     vendor: String, 
@@ -25,7 +22,23 @@ const payableSchema = new mongoose.Schema({
     remarks: String 
 });
 
+// 💥 NEW: BANK STATEMENT SCHEMA (Captures all columns)
+const bankTransactionSchema = new mongoose.Schema({
+    transactionDate: Date,
+    valueDate: Date,
+    chequeNo: String,
+    description: String,
+    branchCode: String,
+    debit: Number,     // Payments
+    credit: Number,    // Collections
+    balance: Number,
+    head: String,
+    name: String,
+    remarks: String
+});
+
 module.exports = {
     Invoice: mongoose.model('Invoice', invoiceSchema),
-    Payable: mongoose.model('Payable', payableSchema)
+    Payable: mongoose.model('Payable', payableSchema),
+    BankTransaction: mongoose.model('BankTransaction', bankTransactionSchema)
 };
