@@ -17,30 +17,16 @@
         .export-btn:hover { transform: translateY(-2px); }
         select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; font-size: 14px; }
         
-        /* 💥 NEW: BEAUTIFUL SUMMARY DASHBOARD CARDS */
         .summary-wrapper { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; }
         .summary-card { background: #fff; border-radius: 12px; padding: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); border-top: 5px solid; }
         
-        .card-sales { border-top-color: #3498db; }
-        .card-sales h2 { color: #3498db; }
-        .card-sales th { background-color: #ebf5fb; color: #2980b9; }
-
-        .card-purchases { border-top-color: #e67e22; }
-        .card-purchases h2 { color: #e67e22; }
-        .card-purchases th { background-color: #fef5e7; color: #d35400; }
-
-        .card-payments { border-top-color: #9b59b6; }
-        .card-payments h2 { color: #9b59b6; }
-        .card-payments th { background-color: #f5eef8; color: #8e44ad; }
-
-        .card-collections { border-top-color: #2ecc71; }
-        .card-collections h2 { color: #2ecc71; }
-        .card-collections th { background-color: #eafaf1; color: #27ae60; }
+        .card-sales { border-top-color: #3498db; } .card-sales h2 { color: #3498db; } .card-sales th { background-color: #ebf5fb; color: #2980b9; }
+        .card-purchases { border-top-color: #e67e22; } .card-purchases h2 { color: #e67e22; } .card-purchases th { background-color: #fef5e7; color: #d35400; }
+        .card-payments { border-top-color: #9b59b6; } .card-payments h2 { color: #9b59b6; } .card-payments th { background-color: #f5eef8; color: #8e44ad; }
+        .card-collections { border-top-color: #2ecc71; } .card-collections h2 { color: #2ecc71; } .card-collections th { background-color: #eafaf1; color: #27ae60; }
 
         .data-table th, .data-table td { padding: 12px; border-bottom: 1px solid #ecf0f1; text-align: left; }
         .data-table tfoot th { font-weight: bold; font-size: 16px; border-top: 2px solid #bdc3c7; }
-
-        /* EXCEL-STYLE EDITABLE CELL CSS */
         .editable-cell { cursor: text; transition: all 0.2s; border-bottom: 1px dotted transparent; }
         .editable-cell:hover { background-color: #f9fbff; border-bottom: 1px dotted #3498db; }
         .editable-cell:focus { background-color: #fff; outline: 2px solid #3498db; border-radius: 4px; }
@@ -141,7 +127,7 @@
                 <input type="text" id="payments-search" class="search-bar" placeholder="🔍 Search Payments by Name, Cheque, or Description..." onkeyup="filterTable('payments-body', 'payments-search')">
                 <div class="table-wrapper">
                     <table class="data-table">
-                        <thead style="background:#f5eef8; color:#8e44ad;"><tr><th>S.No</th><th>Trans. Date</th><th>Value Date</th><th>Cheque No.</th><th>Description</th><th>Branch</th><th>Head</th><th>Name</th><th>Remarks</th><th>Debit (₹)</th><th>Balance (₹)</th></tr></thead>
+                        <thead style="background:#f5eef8; color:#8e44ad;"><tr><th>S.No</th><th>Trans. Date</th><th>Value Date</th><th>Cheque No.</th><th>Description</th><th>Branch</th><th>Head</th><th>Name</th><th>Remarks</th><th>Debit (₹)</th><th>Credit (₹)</th><th>Balance (₹)</th><th>Final Balance (₹)</th></tr></thead>
                         <tbody id="payments-body"></tbody>
                     </table>
                 </div>
@@ -152,7 +138,7 @@
                 <input type="text" id="collections-search" class="search-bar" placeholder="🔍 Search Collections by Name, Cheque, or Description..." onkeyup="filterTable('collections-body', 'collections-search')">
                 <div class="table-wrapper">
                     <table class="data-table">
-                        <thead style="background:#eafaf1; color:#27ae60;"><tr><th>S.No</th><th>Trans. Date</th><th>Value Date</th><th>Cheque No.</th><th>Description</th><th>Branch</th><th>Head</th><th>Name</th><th>Remarks</th><th>Credit (₹)</th><th>Balance (₹)</th></tr></thead>
+                        <thead style="background:#eafaf1; color:#27ae60;"><tr><th>S.No</th><th>Trans. Date</th><th>Value Date</th><th>Cheque No.</th><th>Description</th><th>Branch</th><th>Head</th><th>Name</th><th>Remarks</th><th>Debit (₹)</th><th>Credit (₹)</th><th>Balance (₹)</th><th>Final Balance (₹)</th></tr></thead>
                         <tbody id="collections-body"></tbody>
                     </table>
                 </div>

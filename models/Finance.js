@@ -22,16 +22,16 @@ const payableSchema = new mongoose.Schema({
     remarks: String 
 });
 
-// 💥 NEW: BANK STATEMENT SCHEMA (Captures all columns)
 const bankTransactionSchema = new mongoose.Schema({
     transactionDate: Date,
     valueDate: Date,
     chequeNo: String,
     description: String,
     branchCode: String,
-    debit: Number,     // Payments
-    credit: Number,    // Collections
-    balance: Number,
+    debit: Number,     
+    credit: Number,    
+    balance: Number,        // First Balance
+    finalBalance: Number,   // 💥 NEW: Second Balance
     head: String,
     name: String,
     remarks: String

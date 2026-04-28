@@ -90,7 +90,7 @@ function cellKeydown(event, id, field, type, cell) {
             if (field.toLowerCase().includes('date')) {
                 const parts = newValue.split('/');
                 if (parts.length === 3) newValue = `${parts[2]}-${parts[1]}-${parts[0]}`;
-            } else if (['invoiceValue', 'taxableValue', 'integratedTax', 'centralTax', 'stateTax', 'debit', 'credit', 'balance'].includes(field)) {
+            } else if (['invoiceValue', 'taxableValue', 'integratedTax', 'centralTax', 'stateTax', 'debit', 'credit', 'balance', 'finalBalance'].includes(field)) {
                 newValue = newValue.replace(/[^0-9.-]+/g, ""); 
             }
             fetch(`${API_BASE}/api/finance/update-record/${type}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field, value: newValue }) })
@@ -160,7 +160,6 @@ async function loadFinanceData() {
         document.getElementById('col-today-total').innerText = `₹${colTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('col-mtd-total').innerText = `₹${colMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // TABLES (With contenteditable)
         document.getElementById('sales-body').innerHTML = tables.receivables.map((inv, index) => `
             <tr>
                 <td><strong>${index + 1}</strong></td>
@@ -189,6 +188,7 @@ async function loadFinanceData() {
             </tr>
         `).join('');
 
+        // 💥 BOTH BALANCES RENDERED HERE
         const payments = tables.bankTransactions.filter(tx => tx.debit > 0);
         document.getElementById('payments-body').innerHTML = payments.map((tx, index) => `
             <tr>
@@ -202,7 +202,9 @@ async function loadFinanceData() {
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'name', 'Bank', this)">${tx.name || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'remarks', 'Bank', this)">${tx.remarks || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'debit', 'Bank', this)">₹${(tx.debit || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'credit', 'Bank', this)">₹${(tx.credit || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'balance', 'Bank', this)">₹${(tx.balance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'finalBalance', 'Bank', this)">₹${(tx.finalBalance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             </tr>
         `).join('');
 
@@ -218,8 +220,10 @@ async function loadFinanceData() {
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'head', 'Bank', this)">${tx.head || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'name', 'Bank', this)">${tx.name || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'remarks', 'Bank', this)">${tx.remarks || ''}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'debit', 'Bank', this)">₹${(tx.debit || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'credit', 'Bank', this)">₹${(tx.credit || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'balance', 'Bank', this)">₹${(tx.balance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'finalBalance', 'Bank', this)">₹${(tx.finalBalance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             </tr>
         `).join('');
 

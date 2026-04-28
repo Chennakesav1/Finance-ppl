@@ -12,7 +12,6 @@ app.use(express.static('public'));
 
 const upload = multer({ dest: 'uploads/' });
 
-// ENSURE YOUR MONGO URI IS CORRECT HERE
 const MONGO_URI = 'mongodb+srv://chennakesavarao89_db_user:chenna12345@finance.ir4cjql.mongodb.net/?appName=Finance';
 mongoose.connect(MONGO_URI)
     .then(() => console.log('✅ Precifast Ultimate ERP Connected!'))
@@ -33,7 +32,6 @@ const parseExcelDate = (val) => {
     return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0));
 };
 
-// 💥 AGGRESSIVE COLUMN MATCHER
 const getVal = (row, searchStrs) => {
     const keys = Object.keys(row);
     for (let search of searchStrs) {
@@ -65,23 +63,40 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
         }
 
         if (isBankStmt) {
+            // Read with standard headers
             const bankData = xlsx.utils.sheet_to_json(firstSheet, { range: bankHeaderIndex });
             const bulkBankOps = [];
+            
             bankData.forEach(r => {
                 const desc = getVal(r, ['description']);
                 const tDate = parseExcelDate(getVal(r, ['transactiondate']));
                 if (!desc || !tDate) return;
+
+                // 💥 FIND BOTH BALANCES: Excel parser labels duplicates as 'Balance_1'
+                const keys = Object.keys(r);
+                const balanceKeys = keys.filter(k => k.toLowerCase().includes('balance'));
+                const firstBal = balanceKeys.length > 0 ? parseFloat(r[balanceKeys[0]]) : 0;
+                const secondBal = balanceKeys.length > 1 ? parseFloat(r[balanceKeys[1]]) : 0;
+
                 const doc = {
-                    transactionDate: tDate, valueDate: parseExcelDate(getVal(r, ['valuedate'])),
-                    chequeNo: getVal(r, ['chequeno', 'cheque']), description: desc, branchCode: getVal(r, ['branchcode']),
-                    debit: parseFloat(getVal(r, ['debit'])) || 0, credit: parseFloat(getVal(r, ['credit'])) || 0,
-                    balance: parseFloat(getVal(r, ['balance'])) || 0, head: getVal(r, ['head']), name: getVal(r, ['name']),
+                    transactionDate: tDate, 
+                    valueDate: parseExcelDate(getVal(r, ['valuedate'])),
+                    chequeNo: getVal(r, ['chequeno', 'cheque']), 
+                    description: desc, 
+                    branchCode: getVal(r, ['branchcode']),
+                    debit: parseFloat(getVal(r, ['debit'])) || 0, 
+                    credit: parseFloat(getVal(r, ['credit'])) || 0, // 💥 Credit perfectly captured
+                    balance: firstBal || 0,
+                    finalBalance: secondBal || 0, // 💥 Second balance assigned here
+                    head: getVal(r, ['head']), 
+                    name: getVal(r, ['name']),
                     remarks: getVal(r, ['remarks', 'remakrs'])
                 };
-                bulkBankOps.push({ updateOne: { filter: { transactionDate: tDate, description: desc, balance: doc.balance }, update: { $set: doc }, upsert: true }});
+
+                bulkBankOps.push({ updateOne: { filter: { transactionDate: tDate, description: desc, debit: doc.debit, credit: doc.credit }, update: { $set: doc }, upsert: true }});
             });
             if (bulkBankOps.length > 0) await BankTransaction.bulkWrite(bulkBankOps);
-            return res.json({ message: "Bank Statement Processed Successfully!" });
+            return res.json({ message: "Bank Statement Attached Successfully!" });
         }
 
         // 2. PROCESS SALES (TALLY FORMAT)
@@ -103,24 +118,16 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
                     let customerName = r['Particulars'];
                     if (customerName && (customerName.trim().toLowerCase() === 'by' || customerName.trim().toLowerCase() === 'to')) {
                         customerName = r['__EMPTY'] || r['__EMPTY_1'] || r['__EMPTY_2'];
-                    } else if (!customerName) {
-                        customerName = r['__EMPTY'] || r['__EMPTY_1'];
-                    }
+                    } else if (!customerName) { customerName = r['__EMPTY'] || r['__EMPTY_1']; }
 
                     const invNo = getVal(r, ['vchno', 'invoiceno']);
                     if (!invNo) return; 
-
-                    // 💥 BULLETPROOF CREDIT/DEBIT EXTRACTION
                     let invoiceValue = parseFloat(getVal(r, ['credit'])) || parseFloat(getVal(r, ['debit'])) || parseFloat(getVal(r, ['invoicevalue'])) || 0;
 
                     const doc = {
-                        invoiceNo: invNo,
-                        invoiceDate: parseExcelDate(getVal(r, ['date', 'invoicedate'])),
-                        customer: customerName,
-                        invoiceValue: invoiceValue,
-                        marketier: getVal(r, ['remakrs', 'remarks', 'marketier'])
+                        invoiceNo: invNo, invoiceDate: parseExcelDate(getVal(r, ['date', 'invoicedate'])),
+                        customer: customerName, invoiceValue: invoiceValue, marketier: getVal(r, ['remakrs', 'remarks', 'marketier'])
                     };
-
                     bulkSalesOps.push({ updateOne: { filter: { invoiceNo: invNo }, update: { $set: doc }, upsert: true }});
                 });
                 if (bulkSalesOps.length > 0) await Invoice.bulkWrite(bulkSalesOps);
@@ -158,21 +165,15 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
                         stateTax: parseFloat(getVal(r, ['statetax', 'sgst'])) || 0,
                         remarks: getVal(r, ['remakrs', 'remarks'])
                     };
-
                     bulkPurchaseOps.push({ updateOne: { filter: { invoiceNumber: invoiceNumber, vendor: vendor }, update: { $set: doc }, upsert: true }});
                 });
                 if (bulkPurchaseOps.length > 0) await Payable.bulkWrite(bulkPurchaseOps);
             }
         }
-
         res.json({ message: "Excel Data Attached & Updated Successfully!" });
-    } catch (error) {
-        console.error("Upload Error:", error);
-        res.status(500).json({ error: "Failed to process Excel data." });
-    }
+    } catch (error) { res.status(500).json({ error: "Failed to process Excel data." }); }
 });
 
-// GET ALL DATA AND UPDATE RECORDS ROUTES REMAIN UNCHANGED
 app.get('/api/finance/all-data', async (req, res) => {
     try {
         let targetDate;
@@ -233,7 +234,7 @@ app.put('/api/finance/update-record/:type/:id', async (req, res) => {
         let Model = type === 'Sales' ? Invoice : (type === 'Purchase' ? Payable : BankTransaction);
         let parsedValue = value;
         if (field.toLowerCase().includes('date')) parsedValue = parseExcelDate(value);
-        else if (['invoiceValue', 'taxableValue', 'integratedTax', 'centralTax', 'stateTax', 'debit', 'credit', 'balance'].includes(field)) parsedValue = Number(value);
+        else if (['invoiceValue', 'taxableValue', 'integratedTax', 'centralTax', 'stateTax', 'debit', 'credit', 'balance', 'finalBalance'].includes(field)) parsedValue = Number(value);
         await Model.findByIdAndUpdate(id, { [field]: parsedValue });
         res.json({ message: "Cell Updated Successfully!" });
     } catch (error) { res.status(500).json({ error: "Failed to update record." }); }
