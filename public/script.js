@@ -7,7 +7,7 @@ function switchTab(tabId) {
     document.querySelectorAll('.nav-links li').forEach(l => l.classList.remove('active'));
     document.getElementById(tabId).classList.add('active-tab');
     event.currentTarget.classList.add('active');
-    const titles = { 'summary':'Summary Dashboard', 'sales':'Sales Register', 'purchase':'Purchase Register', 'bank':'Bank Statement Register', 'manual':'Manual Entry', 'upload':'Upload Data'};
+    const titles = { 'summary':'Summary Dashboard', 'sales':'Sales Register', 'purchase':'Purchase Register', 'payments':'Payments Register', 'collections':'Collections Register', 'bank':'Bank Statement Register', 'manual':'Manual Entry', 'upload':'Upload Data'};
     document.getElementById('page-title').innerText = titles[tabId];
 }
 
@@ -78,14 +78,85 @@ function autoCalculatePurchase() {
     document.getElementById('p-val').value = parseFloat((taxableValue + igst).toFixed(2));
 }
 
-function downloadPDF() { html2pdf().set({ margin: 0.5, filename: `Summary_Report.pdf`, html2canvas: { scale: 2 }, jsPDF: { orientation: 'landscape' } }).from(document.getElementById('summary-export-content')).save(); }
+
+// 💥 NEW: PERFECT SINGLE-PAGE EXPORT FORMATTER
+function getExportHTML() {
+    const date = document.getElementById('date-selector').value || new Date().toISOString().split('T')[0];
+    const sales = document.getElementById('sales-summary-table').outerHTML;
+    const purchases = document.getElementById('purchase-summary-table').outerHTML;
+    const payments = document.getElementById('payments-summary-table').outerHTML;
+    const collections = document.getElementById('collections-summary-table').outerHTML;
+
+    // Forces a 2x2 grid that Word and PDF cannot break apart
+    return `
+    <div style="font-family: Arial, sans-serif; color: #2c3e50; padding: 10px;">
+        <h2 style="text-align: center; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; margin-bottom: 20px;">
+            PRECIFAST PVT LTD - Summary Dashboard (${date})
+        </h2>
+        <table style="width: 100%; border-collapse: collapse; border: none;">
+            <tr>
+                <td style="width: 50%; vertical-align: top; padding: 10px 20px 20px 0;">
+                    <h3 style="color: #2980b9; margin-bottom: 10px; font-size: 16px;">Sales Summary</h3>
+                    ${sales}
+                </td>
+                <td style="width: 50%; vertical-align: top; padding: 10px 0 20px 20px;">
+                    <h3 style="color: #d35400; margin-bottom: 10px; font-size: 16px;">Purchases Summary</h3>
+                    ${purchases}
+                </td>
+            </tr>
+            <tr>
+                <td style="width: 50%; vertical-align: top; padding: 10px 20px 0 0;">
+                    <h3 style="color: #8e44ad; margin-bottom: 10px; font-size: 16px;">Payments Summary</h3>
+                    ${payments}
+                </td>
+                <td style="width: 50%; vertical-align: top; padding: 10px 0 0 20px;">
+                    <h3 style="color: #27ae60; margin-bottom: 10px; font-size: 16px;">Collections Summary</h3>
+                    ${collections}
+                </td>
+            </tr>
+        </table>
+    </div>
+    `;
+}
+
+function downloadPDF() { 
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = `
+        <style>
+            table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            th, td { border: 1px solid #bdc3c7; padding: 6px 8px; text-align: left; }
+            th { background-color: #ecf0f1; font-weight: bold; }
+            tfoot th { background-color: #d5d8dc; color: #000; font-weight: bold; }
+        </style>
+        ${getExportHTML()}
+    `;
+    
+    html2pdf().set({ 
+        margin: 0.3, 
+        filename: `Summary_Report_${document.getElementById('date-selector').value || 'Current'}.pdf`, 
+        html2canvas: { scale: 2 }, 
+        jsPDF: { format: 'a4', orientation: 'landscape' } 
+    }).from(tempDiv).save(); 
+}
+
 function downloadWord() {
-    const fullHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Summary Report</title><style>table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-family: Arial; } th, td { border: 1px solid #000; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style></head><body>` + document.getElementById("summary-export-content").innerHTML + "</body></html>";
+    const fullHtml = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head><meta charset='utf-8'><title>Summary Report</title>
+        <style>
+            table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; } 
+            th, td { border: 1px solid #bdc3c7; padding: 6px; text-align: left; } 
+            th { background-color: #ecf0f1; font-weight: bold; }
+            tfoot th { background-color: #d5d8dc; font-weight: bold; }
+        </style></head>
+        <body>${getExportHTML()}</body></html>
+    `;
     const link = document.createElement('a');
     link.href = URL.createObjectURL(new Blob(['\ufeff', fullHtml], { type: 'application/msword' }));
-    link.download = `Summary_Report.doc`;
+    link.download = `Summary_Report_${document.getElementById('date-selector').value || 'Current'}.doc`;
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
+
 
 function cellKeydown(event, id, field, type, cell) {
     if (event.key === 'Enter') {
@@ -125,7 +196,6 @@ async function loadFinanceData() {
         tables.payables.forEach(p => { if (p.vendor && !vendorDetails[p.vendor]) vendorDetails[p.vendor] = p.gstin || ''; });
         document.getElementById('p-vendor-select').innerHTML = '<option value="" disabled selected>Select Supplier</option>' + Object.keys(vendorDetails).map(v => `<option value="${v}">${v}</option>`).join('') + '<option value="Other" style="font-weight:bold; color:#3498db;">+ Other (Add New)</option>';
 
-        // SALES SUMMARY
         const salesCats = ['OE', 'Retails', 'SS Dealers'];
         let sTodayTotal = 0, sMtdTotal = 0;
         document.querySelector('#sales-summary-table tbody').innerHTML = salesCats.map(cat => {
@@ -136,7 +206,6 @@ async function loadFinanceData() {
         document.getElementById('s-today-total').innerText = `₹${sTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('s-mtd-total').innerText = `₹${sMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // PURCHASE SUMMARY
         const purCats = ['Consumables', 'Logistics', 'Maintanance', 'Outsourcing', 'Packing consu.', 'RM', 'Tools'];
         let pTodayTotal = 0, pMtdTotal = 0;
         document.querySelector('#purchase-summary-table tbody').innerHTML = purCats.map(cat => {
@@ -147,7 +216,6 @@ async function loadFinanceData() {
         document.getElementById('p-today-total').innerText = `₹${pTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('p-mtd-total').innerText = `₹${pMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // PAYMENTS SUMMARY
         const payCats = ['RM', 'Statutory', 'Tools /consu/R&M', 'Others', 'Sundry Exp', 'Freight'];
         let payTodayTotal = 0, payMtdTotal = 0;
         document.querySelector('#payments-summary-table tbody').innerHTML = payCats.map(cat => {
@@ -158,7 +226,6 @@ async function loadFinanceData() {
         document.getElementById('pay-today-total').innerText = `₹${payTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('pay-mtd-total').innerText = `₹${payMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // COLLECTIONS SUMMARY
         const colCats = ['OE', 'Retails', 'SS Dealers', 'Others'];
         let colTodayTotal = 0, colMtdTotal = 0;
         document.querySelector('#collections-summary-table tbody').innerHTML = colCats.map(cat => {
@@ -169,7 +236,6 @@ async function loadFinanceData() {
         document.getElementById('col-today-total').innerText = `₹${colTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('col-mtd-total').innerText = `₹${colMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // SALES TABLE
         document.getElementById('sales-body').innerHTML = tables.receivables.map((inv, index) => `
             <tr>
                 <td><strong>${index + 1}</strong></td>
@@ -181,7 +247,6 @@ async function loadFinanceData() {
             </tr>
         `).join('');
 
-        // PURCHASE TABLE
         document.getElementById('purchase-body').innerHTML = tables.payables.map((pay, index) => `
             <tr>
                 <td><strong>${index + 1}</strong></td>
@@ -199,7 +264,6 @@ async function loadFinanceData() {
             </tr>
         `).join('');
 
-        // UNIFIED BANK TABLE
         document.getElementById('bank-body').innerHTML = tables.bankTransactions.map((tx, index) => `
             <tr>
                 <td><strong>${index + 1}</strong></td>
@@ -245,12 +309,16 @@ document.getElementById('manual-sale-form').addEventListener('submit', async (e)
     showToast("✅ Sale Saved"); document.getElementById('manual-sale-form').reset(); document.getElementById('s-customer-new').style.display = 'none'; loadFinanceData();
 });
 
-// ... existing script code above ...
+document.getElementById('manual-purchase-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const v = document.getElementById('p-vendor-select').value;
+    await fetch(`${API_BASE}/api/finance/manual-purchase`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gstin: document.getElementById('p-gstin').value, vendor: v === 'Other' ? document.getElementById('p-vendor-new').value : v, invoiceNumber: document.getElementById('p-invNo').value, invoiceDate: document.getElementById('p-date').value, matRecDate: document.getElementById('p-matDate').value || null, invoiceValue: parseFloat(document.getElementById('p-val').value) || 0, taxableValue: parseFloat(document.getElementById('p-tax').value) || 0, integratedTax: parseFloat(document.getElementById('p-igst').value) || 0, centralTax: parseFloat(document.getElementById('p-cgst').value) || 0, stateTax: parseFloat(document.getElementById('p-sgst').value) || 0, remarks: document.getElementById('p-remarks').value }) });
+    showToast("✅ Purchase Saved"); document.getElementById('manual-purchase-form').reset(); document.getElementById('p-vendor-new').style.display = 'none'; loadFinanceData();
+});
 
+// Manual Bank Handler
 document.getElementById('manual-bank-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    // Automatically route the amount to the correct debit/credit slot
     const txType = document.getElementById('b-type').value;
     const amount = parseFloat(document.getElementById('b-amount').value) || 0;
     const debitVal = txType === 'Debit' ? amount : 0;
@@ -271,16 +339,8 @@ document.getElementById('manual-bank-form').addEventListener('submit', async (e)
         remarks: document.getElementById('b-remarks').value
     };
 
-    await fetch(`${API_BASE}/api/finance/manual-bank`, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(newBankTx) 
-    });
-    
-    showToast("✅ Bank Transaction Saved");
-    document.getElementById('manual-bank-form').reset();
-    loadFinanceData();
+    await fetch(`${API_BASE}/api/finance/manual-bank`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newBankTx) });
+    showToast("✅ Bank Transaction Saved"); document.getElementById('manual-bank-form').reset(); loadFinanceData();
 });
 
 document.addEventListener('DOMContentLoaded', () => { document.getElementById('date-selector').value = ''; loadFinanceData(); });
-
