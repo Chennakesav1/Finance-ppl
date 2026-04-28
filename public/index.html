@@ -42,8 +42,9 @@
                 <li class="active" onclick="switchTab('summary')"><i class="fas fa-chart-line"></i> Summary</li>
                 <li onclick="switchTab('sales')"><i class="fas fa-file-invoice-dollar"></i> Sales</li>
                 <li onclick="switchTab('purchase')"><i class="fas fa-shopping-cart"></i> Purchase</li>
-                <li onclick="switchTab('payments')"><i class="fas fa-money-check-alt"></i> Payments</li>
-                <li onclick="switchTab('collections')"><i class="fas fa-hand-holding-usd"></i> Collections</li>
+                
+                <li onclick="switchTab('bank')"><i class="fas fa-university"></i> Bank Statement</li>
+                
                 <li onclick="switchTab('manual')"><i class="fas fa-edit"></i> Manual Entry</li>
                 <li onclick="switchTab('upload')"><i class="fas fa-file-excel"></i> Upload MIS</li>
                 <li onclick="logout()" style="margin-top: 30px; color: #e74c3c; border-top: 1px solid #34495e; padding-top: 20px;"><i class="fas fa-sign-out-alt"></i> Secure Logout</li>
@@ -79,8 +80,9 @@
                             <tfoot><tr><th>Grand Total</th><th id="p-today-total">₹0</th><th id="p-mtd-total">₹0</th></tr></tfoot>
                         </table>
                     </div>
+                    
                     <div class="summary-card card-payments">
-                        <h2><i class="fas fa-money-check-alt"></i> Payments Summary</h2>
+                        <h2><i class="fas fa-arrow-up" style="transform: rotate(45deg);"></i> Payments Summary</h2>
                         <table class="data-table" id="payments-summary-table">
                             <thead><tr><th>Particulars</th><th>Today Payments</th><th>MTD Payments</th></tr></thead>
                             <tbody></tbody>
@@ -88,7 +90,7 @@
                         </table>
                     </div>
                     <div class="summary-card card-collections">
-                        <h2><i class="fas fa-hand-holding-usd"></i> Collections Summary</h2>
+                        <h2><i class="fas fa-arrow-down" style="transform: rotate(45deg);"></i> Collections Summary</h2>
                         <table class="data-table" id="collections-summary-table">
                             <thead><tr><th>Particulars</th><th>Today Collections</th><th>MTD Collections</th></tr></thead>
                             <tbody></tbody>
@@ -122,24 +124,15 @@
                 </div>
             </section>
 
-            <section id="payments" class="tab-content">
-                <h2>Payments (Debits)</h2>
-                <input type="text" id="payments-search" class="search-bar" placeholder="🔍 Search Payments by Name, Cheque, or Description..." onkeyup="filterTable('payments-body', 'payments-search')">
+            <section id="bank" class="tab-content">
+                <h2>Bank Statement (Payments & Collections)</h2>
+                <input type="text" id="bank-search" class="search-bar" placeholder="🔍 Search Bank Records by Name, Cheque, or Description..." onkeyup="filterTable('bank-body', 'bank-search')">
                 <div class="table-wrapper">
                     <table class="data-table">
-                        <thead style="background:#f5eef8; color:#8e44ad;"><tr><th>S.No</th><th>Trans. Date</th><th>Value Date</th><th>Cheque No.</th><th>Description</th><th>Branch</th><th>Head</th><th>Name</th><th>Remarks</th><th>Debit (₹)</th><th>Credit (₹)</th><th>Balance (₹)</th><th>Final Balance (₹)</th></tr></thead>
-                        <tbody id="payments-body"></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section id="collections" class="tab-content">
-                <h2>Collections (Credits)</h2>
-                <input type="text" id="collections-search" class="search-bar" placeholder="🔍 Search Collections by Name, Cheque, or Description..." onkeyup="filterTable('collections-body', 'collections-search')">
-                <div class="table-wrapper">
-                    <table class="data-table">
-                        <thead style="background:#eafaf1; color:#27ae60;"><tr><th>S.No</th><th>Trans. Date</th><th>Value Date</th><th>Cheque No.</th><th>Description</th><th>Branch</th><th>Head</th><th>Name</th><th>Remarks</th><th>Debit (₹)</th><th>Credit (₹)</th><th>Balance (₹)</th><th>Final Balance (₹)</th></tr></thead>
-                        <tbody id="collections-body"></tbody>
+                        <thead style="background:#e8f4f8; color:#2c3e50;">
+                            <tr><th>S.No</th><th>Trans. Date</th><th>Value Date</th><th>Cheque No.</th><th>Description</th><th>Branch</th><th>Head</th><th>Name</th><th>Remarks</th><th>Debit (₹)</th><th>Credit (₹)</th><th>Balance (₹)</th><th>Final Balance (₹)</th></tr>
+                        </thead>
+                        <tbody id="bank-body"></tbody>
                     </table>
                 </div>
             </section>
