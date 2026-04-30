@@ -226,12 +226,15 @@ async function loadFinanceData() {
         document.getElementById('pay-today-total').innerText = `₹${payTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('pay-mtd-total').innerText = `₹${payMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        const colCats = ['OE', 'Retails', 'SS Dealers', 'Others'];
+        const colCats = ['OE', 'Retails', 'SS Dealers', 'Other Income', 'Security Deposits', 'USL', 'Bank interest', 'Others'];
+
+        // The rest of the logic remains the same and will now include these new categories
         let colTodayTotal = 0, colMtdTotal = 0;
         document.querySelector('#collections-summary-table tbody').innerHTML = colCats.map(cat => {
+            // This logic finds the aggregated data by category from the server
             const row = analysis.collectionAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
             colTodayTotal += row.today; colMtdTotal += row.mtd;
-            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>`;
+            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td><td>₹${row.mtd.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td></tr>`;
         }).join('');
         document.getElementById('col-today-total').innerText = `₹${colTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('col-mtd-total').innerText = `₹${colMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
