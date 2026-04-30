@@ -78,8 +78,7 @@ function autoCalculatePurchase() {
     document.getElementById('p-val').value = parseFloat((taxableValue + igst).toFixed(2));
 }
 
-
-// 💥 NEW: PERFECT SINGLE-PAGE EXPORT FORMATTER
+// 💥 THE FIX: Ultra-compact design ensuring a perfect Single Page layout
 function getExportHTML() {
     const date = document.getElementById('date-selector').value || new Date().toISOString().split('T')[0];
     const sales = document.getElementById('sales-summary-table').outerHTML;
@@ -87,30 +86,29 @@ function getExportHTML() {
     const payments = document.getElementById('payments-summary-table').outerHTML;
     const collections = document.getElementById('collections-summary-table').outerHTML;
 
-    // Forces a 2x2 grid that Word and PDF cannot break apart
     return `
-    <div style="font-family: Arial, sans-serif; color: #2c3e50; padding: 10px;">
-        <h2 style="text-align: center; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; margin-bottom: 20px;">
+    <div style="font-family: Arial, sans-serif; color: #2c3e50; padding: 0; width: 100%; box-sizing: border-box;">
+        <h2 style="text-align: center; border-bottom: 1px solid #2c3e50; padding-bottom: 4px; margin: 0 0 10px 0; font-size: 15px;">
             PRECIFAST PVT LTD - Summary Dashboard (${date})
         </h2>
-        <table style="width: 100%; border-collapse: collapse; border: none;">
+        <table style="width: 100%; border-collapse: collapse; border: none; table-layout: fixed;">
             <tr>
-                <td style="width: 50%; vertical-align: top; padding: 10px 20px 20px 0;">
-                    <h3 style="color: #2980b9; margin-bottom: 10px; font-size: 16px;">Sales Summary</h3>
+                <td style="width: 50%; vertical-align: top; padding: 0 6px 8px 0; border: none;">
+                    <h3 style="color: #2980b9; margin: 0 0 4px 0; font-size: 12px;">Sales Summary</h3>
                     ${sales}
                 </td>
-                <td style="width: 50%; vertical-align: top; padding: 10px 0 20px 20px;">
-                    <h3 style="color: #d35400; margin-bottom: 10px; font-size: 16px;">Purchases Summary</h3>
+                <td style="width: 50%; vertical-align: top; padding: 0 0 8px 6px; border: none;">
+                    <h3 style="color: #d35400; margin: 0 0 4px 0; font-size: 12px;">Purchases Summary</h3>
                     ${purchases}
                 </td>
             </tr>
             <tr>
-                <td style="width: 50%; vertical-align: top; padding: 10px 20px 0 0;">
-                    <h3 style="color: #8e44ad; margin-bottom: 10px; font-size: 16px;">Payments Summary</h3>
+                <td style="width: 50%; vertical-align: top; padding: 0 6px 0 0; border: none;">
+                    <h3 style="color: #8e44ad; margin: 0 0 4px 0; font-size: 12px;">Payments Summary</h3>
                     ${payments}
                 </td>
-                <td style="width: 50%; vertical-align: top; padding: 10px 0 0 20px;">
-                    <h3 style="color: #27ae60; margin-bottom: 10px; font-size: 16px;">Collections Summary</h3>
+                <td style="width: 50%; vertical-align: top; padding: 0 0 0 6px; border: none;">
+                    <h3 style="color: #27ae60; margin: 0 0 4px 0; font-size: 12px;">Collections Summary</h3>
                     ${collections}
                 </td>
             </tr>
@@ -123,8 +121,9 @@ function downloadPDF() {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = `
         <style>
-            table { width: 100%; border-collapse: collapse; font-size: 11px; }
-            th, td { border: 1px solid #bdc3c7; padding: 6px 8px; text-align: left; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+            th, td { border: 1px solid #bdc3c7; padding: 3px 5px; text-align: left; }
             th { background-color: #ecf0f1; font-weight: bold; }
             tfoot th { background-color: #d5d8dc; color: #000; font-weight: bold; }
         </style>
@@ -132,10 +131,10 @@ function downloadPDF() {
     `;
     
     html2pdf().set({ 
-        margin: 0.3, 
+        margin: 0.15, // Extremely thin margins to maximize space
         filename: `Summary_Report_${document.getElementById('date-selector').value || 'Current'}.pdf`, 
         html2canvas: { scale: 2 }, 
-        jsPDF: { format: 'a4', orientation: 'landscape' } 
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' } 
     }).from(tempDiv).save(); 
 }
 
@@ -144,8 +143,9 @@ function downloadWord() {
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
         <head><meta charset='utf-8'><title>Summary Report</title>
         <style>
-            table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; } 
-            th, td { border: 1px solid #bdc3c7; padding: 6px; text-align: left; } 
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 9.5px; } 
+            th, td { border: 1px solid #bdc3c7; padding: 3px 5px; text-align: left; } 
             th { background-color: #ecf0f1; font-weight: bold; }
             tfoot th { background-color: #d5d8dc; font-weight: bold; }
         </style></head>
@@ -316,7 +316,6 @@ document.getElementById('manual-purchase-form').addEventListener('submit', async
     showToast("✅ Purchase Saved"); document.getElementById('manual-purchase-form').reset(); document.getElementById('p-vendor-new').style.display = 'none'; loadFinanceData();
 });
 
-// Manual Bank Handler
 document.getElementById('manual-bank-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const txType = document.getElementById('b-type').value;
