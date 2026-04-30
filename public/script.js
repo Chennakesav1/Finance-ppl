@@ -40,10 +40,17 @@ const formatDateTime = (dateStr) => {
     return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')}`;
 };
 
+// 💥 THE FIX: Smarter Category Matching for "S D" -> Security Deposits
 const matchCategory = (targetCat, dataCat) => {
     const target = targetCat.toUpperCase().trim();
     const actual = (dataCat || '').toUpperCase().trim();
     if (!actual) return false;
+    
+    // Automatically link "S D" from Excel to "Security Deposits" on the Dashboard
+    if (target === 'SECURITY DEPOSITS' && (actual === 'S D' || actual === 'SD')) {
+        return true;
+    }
+    
     return actual === target || actual.includes(target) || target.includes(actual);
 };
 
@@ -78,7 +85,6 @@ function autoCalculatePurchase() {
     document.getElementById('p-val').value = parseFloat((taxableValue + igst).toFixed(2));
 }
 
-// 💥 ULTRA-COMPACT EXPORT HTML WITH SLIGHT SPACING
 function getExportHTML() {
     const date = document.getElementById('date-selector').value || new Date().toISOString().split('T')[0];
     const sales = document.getElementById('sales-summary-table').outerHTML;
@@ -122,8 +128,8 @@ function downloadPDF() {
     tempDiv.innerHTML = `
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            table.data-table { width: 100%; border-collapse: collapse; font-size: 8px; } /* ULTRA SMALL FONT */
-            th, td { border: 0.5px solid #000; padding: 2px 3px; text-align: left; } /* TINY PADDING */
+            table.data-table { width: 100%; border-collapse: collapse; font-size: 8px; }
+            th, td { border: 0.5px solid #000; padding: 2px 3px; text-align: left; }
             th { background-color: #f0f0f0; font-weight: bold; }
             tfoot th { background-color: #e0e0e0; color: #000; font-weight: bold; }
         </style>
@@ -131,7 +137,7 @@ function downloadPDF() {
     `;
     
     html2pdf().set({ 
-        margin: 0.1, // Even thinner margin to absolutely guarantee one page
+        margin: 0.1,
         filename: `Summary_Report_${document.getElementById('date-selector').value || 'Current'}.pdf`, 
         html2canvas: { scale: 2 }, 
         jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' } 
@@ -156,7 +162,6 @@ function downloadWord() {
     link.download = `Summary_Report_${document.getElementById('date-selector').value || 'Current'}.doc`;
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
-
 
 function cellKeydown(event, id, field, type, cell) {
     if (event.key === 'Enter') {
@@ -226,15 +231,13 @@ async function loadFinanceData() {
         document.getElementById('pay-today-total').innerText = `₹${payTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('pay-mtd-total').innerText = `₹${payMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        const colCats = ['OE', 'Retails', 'SS Dealers', 'Other Income', 'Security Deposits', 'USL', 'Bank interest', 'Others'];
-
-        // The rest of the logic remains the same and will now include these new categories
+        // 💥 THE FIX: Removed 'SS Dealers', added 'Other Income', 'Security Deposits', 'USL', 'Bank interest'
+        const colCats = ['OE', 'Retails', 'Other Income', 'Security Deposits', 'USL', 'Bank interest', 'Others'];
         let colTodayTotal = 0, colMtdTotal = 0;
         document.querySelector('#collections-summary-table tbody').innerHTML = colCats.map(cat => {
-            // This logic finds the aggregated data by category from the server
             const row = analysis.collectionAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
             colTodayTotal += row.today; colMtdTotal += row.mtd;
-            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td><td>₹${row.mtd.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td></tr>`;
+            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>`;
         }).join('');
         document.getElementById('col-today-total').innerText = `₹${colTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('col-mtd-total').innerText = `₹${colMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
