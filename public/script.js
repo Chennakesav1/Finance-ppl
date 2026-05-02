@@ -84,6 +84,7 @@ function autoCalculatePurchase() {
     document.getElementById('p-val').value = parseFloat((taxableValue + igst).toFixed(2));
 }
 
+// 💥 THE FIX: Narrowed spacing to fit perfectly inside a Portrait page width
 function getExportHTML() {
     const date = document.getElementById('date-selector').value || new Date().toISOString().split('T')[0];
     const sales = document.getElementById('sales-summary-table').outerHTML;
@@ -93,27 +94,27 @@ function getExportHTML() {
 
     return `
     <div style="font-family: Arial, sans-serif; color: #111; padding: 0; width: 100%; box-sizing: border-box;">
-        <h2 style="text-align: center; border-bottom: 1px solid #111; padding-bottom: 2px; margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase;">
+        <h2 style="text-align: center; border-bottom: 1px solid #111; padding-bottom: 4px; margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase;">
             PRECIFAST PVT LTD - Summary Dashboard (${date})
         </h2>
-        <table style="width: 100%; border-collapse: separate; border-spacing: 10px 10px; border: none; table-layout: fixed;">
+        <table style="width: 100%; border-collapse: separate; border-spacing: 5px 15px; border: none; table-layout: fixed;">
             <tr>
                 <td style="width: 50%; vertical-align: top; border: none; padding: 0;">
-                    <h3 style="color: #2980b9; margin: 0 0 2px 0; font-size: 10px;">Sales Summary</h3>
+                    <h3 style="color: #2980b9; margin: 0 0 4px 0; font-size: 11px;">Sales Summary</h3>
                     ${sales}
                 </td>
                 <td style="width: 50%; vertical-align: top; border: none; padding: 0;">
-                    <h3 style="color: #d35400; margin: 0 0 2px 0; font-size: 10px;">Purchases Summary</h3>
+                    <h3 style="color: #d35400; margin: 0 0 4px 0; font-size: 11px;">Purchases Summary</h3>
                     ${purchases}
                 </td>
             </tr>
             <tr>
                 <td style="width: 50%; vertical-align: top; border: none; padding: 0;">
-                    <h3 style="color: #8e44ad; margin: 0 0 2px 0; font-size: 10px;">Payments Summary</h3>
+                    <h3 style="color: #8e44ad; margin: 0 0 4px 0; font-size: 11px;">Payments Summary</h3>
                     ${payments}
                 </td>
                 <td style="width: 50%; vertical-align: top; border: none; padding: 0;">
-                    <h3 style="color: #27ae60; margin: 0 0 2px 0; font-size: 10px;">Collections Summary</h3>
+                    <h3 style="color: #27ae60; margin: 0 0 4px 0; font-size: 11px;">Collections Summary</h3>
                     ${collections}
                 </td>
             </tr>
@@ -122,13 +123,14 @@ function getExportHTML() {
     `;
 }
 
+// 💥 THE FIX: Changed orientation to 'portrait'
 function downloadPDF() { 
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = `
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            table.data-table { width: 100%; border-collapse: collapse; font-size: 8px; }
-            th, td { border: 0.5px solid #000; padding: 2px 3px; text-align: left; }
+            table.data-table { width: 100%; border-collapse: collapse; font-size: 8.5px; }
+            th, td { border: 0.5px solid #000; padding: 4px; text-align: left; }
             th { background-color: #f0f0f0; font-weight: bold; }
             tfoot th { background-color: #e0e0e0; color: #000; font-weight: bold; }
         </style>
@@ -136,21 +138,23 @@ function downloadPDF() {
     `;
     
     html2pdf().set({ 
-        margin: 0.1,
+        margin: 0.2, // Small margin to ensure it prints perfectly on physical paper
         filename: `Summary_Report_${document.getElementById('date-selector').value || 'Current'}.pdf`, 
         html2canvas: { scale: 2 }, 
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' } 
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } // <-- PORTRAIT SETTING
     }).from(tempDiv).save(); 
 }
 
+// 💥 THE FIX: Added Word-specific CSS to force Portrait printing layout
 function downloadWord() {
     const fullHtml = `
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
         <head><meta charset='utf-8'><title>Summary Report</title>
         <style>
+            @page { size: A4 portrait; margin: 0.4in; }
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            table.data-table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 8px; } 
-            th, td { border: 0.5px solid #000; padding: 2px 3px; text-align: left; } 
+            table.data-table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 9px; } 
+            th, td { border: 0.5px solid #000; padding: 4px; text-align: left; } 
             th { background-color: #f0f0f0; font-weight: bold; }
             tfoot th { background-color: #e0e0e0; font-weight: bold; }
         </style></head>
@@ -230,7 +234,6 @@ async function loadFinanceData() {
         document.getElementById('pay-today-total').innerText = `₹${payTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('pay-mtd-total').innerText = `₹${payMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // 💥 THE FIX: Removed 'Others' from the Collections Summary
         const colCats = ['OE', 'Retails', 'Other Income', 'Security Deposits', 'USL', 'Bank interest'];
         let colTodayTotal = 0, colMtdTotal = 0;
         document.querySelector('#collections-summary-table tbody').innerHTML = colCats.map(cat => {
