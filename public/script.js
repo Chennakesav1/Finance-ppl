@@ -40,7 +40,6 @@ const formatDateTime = (dateStr) => {
     return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')}`;
 };
 
-// 💥 THE FIX: Smarter Category Matching for "S D" -> Security Deposits
 const matchCategory = (targetCat, dataCat) => {
     const target = targetCat.toUpperCase().trim();
     const actual = (dataCat || '').toUpperCase().trim();
@@ -231,8 +230,8 @@ async function loadFinanceData() {
         document.getElementById('pay-today-total').innerText = `₹${payTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         document.getElementById('pay-mtd-total').innerText = `₹${payMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
-        // 💥 THE FIX: Removed 'SS Dealers', added 'Other Income', 'Security Deposits', 'USL', 'Bank interest'
-        const colCats = ['OE', 'Retails', 'Other Income', 'Security Deposits', 'USL', 'Bank interest', 'Others'];
+        // 💥 THE FIX: Removed 'Others' from the Collections Summary
+        const colCats = ['OE', 'Retails', 'Other Income', 'Security Deposits', 'USL', 'Bank interest'];
         let colTodayTotal = 0, colMtdTotal = 0;
         document.querySelector('#collections-summary-table tbody').innerHTML = colCats.map(cat => {
             const row = analysis.collectionAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
