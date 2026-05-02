@@ -41,15 +41,11 @@ const formatDateTime = (dateStr) => {
 };
 
 const matchCategory = (targetCat, dataCat) => {
-    // This automatically handles small letters by converting everything to UPPERCASE before matching
     const target = targetCat.toUpperCase().trim();
     const actual = (dataCat || '').toUpperCase().trim();
     if (!actual) return false;
     
-    // Automatically link "S D" from Excel to "Security Deposits" on the Dashboard
-    if (target === 'SECURITY DEPOSITS' && (actual === 'S D' || actual === 'SD')) {
-        return true;
-    }
+    if (target === 'SECURITY DEPOSITS' && (actual === 'S D' || actual === 'SD')) return true;
     
     return actual === target || actual.includes(target) || target.includes(actual);
 };
@@ -170,7 +166,6 @@ function cellKeydown(event, id, field, type, cell) {
         cell.blur(); 
         if (confirm("Are you sure you want to permanently save this change?")) {
             let newValue = cell.innerText.trim();
-            // Optional: If you edit a cell, automatically push it to uppercase before saving
             if (field === 'remarks' || field === 'marketier') {
                 newValue = newValue.toUpperCase();
             }
@@ -206,56 +201,69 @@ async function loadFinanceData() {
         tables.payables.forEach(p => { if (p.vendor && !vendorDetails[p.vendor]) vendorDetails[p.vendor] = p.gstin || ''; });
         document.getElementById('p-vendor-select').innerHTML = '<option value="" disabled selected>Select Supplier</option>' + Object.keys(vendorDetails).map(v => `<option value="${v}">${v}</option>`).join('') + '<option value="Other" style="font-weight:bold; color:#3498db;">+ Other (Add New)</option>';
 
-        // 💥 FORCED ALL SUMMARY ARRAYS TO UPPERCASE
+        // 💥 APPLIED Math.round() TO ALL SUMMARY DASHBOARD VALUES 
+        // This makes >= 0.5 round up to 1, and < 0.5 round down to 0.
+
         const salesCats = ['OE', 'RETAILS', 'SS DEALERS'];
         let sTodayTotal = 0, sMtdTotal = 0;
         document.querySelector('#sales-summary-table tbody').innerHTML = salesCats.map(cat => {
             const row = analysis.salesAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
-            sTodayTotal += row.today; sMtdTotal += row.mtd;
-            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>`;
+            const roundedToday = Math.round(row.today);
+            const roundedMtd = Math.round(row.mtd);
+            sTodayTotal += roundedToday; 
+            sMtdTotal += roundedMtd;
+            return `<tr><td>${cat}</td><td>₹${roundedToday.toLocaleString('en-IN')}</td><td>₹${roundedMtd.toLocaleString('en-IN')}</td></tr>`;
         }).join('');
-        document.getElementById('s-today-total').innerText = `₹${sTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-        document.getElementById('s-mtd-total').innerText = `₹${sMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('s-today-total').innerText = `₹${sTodayTotal.toLocaleString('en-IN')}`;
+        document.getElementById('s-mtd-total').innerText = `₹${sMtdTotal.toLocaleString('en-IN')}`;
 
         const purCats = ['CONSUMABLES', 'LOGISTICS', 'MAINTANANCE', 'OUTSOURCING', 'PACKING CONSU.', 'RM', 'TOOLS'];
         let pTodayTotal = 0, pMtdTotal = 0;
         document.querySelector('#purchase-summary-table tbody').innerHTML = purCats.map(cat => {
             const row = analysis.purchaseAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
-            pTodayTotal += row.today; pMtdTotal += row.mtd;
-            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>`;
+            const roundedToday = Math.round(row.today);
+            const roundedMtd = Math.round(row.mtd);
+            pTodayTotal += roundedToday; 
+            pMtdTotal += roundedMtd;
+            return `<tr><td>${cat}</td><td>₹${roundedToday.toLocaleString('en-IN')}</td><td>₹${roundedMtd.toLocaleString('en-IN')}</td></tr>`;
         }).join('');
-        document.getElementById('p-today-total').innerText = `₹${pTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-        document.getElementById('p-mtd-total').innerText = `₹${pMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('p-today-total').innerText = `₹${pTodayTotal.toLocaleString('en-IN')}`;
+        document.getElementById('p-mtd-total').innerText = `₹${pMtdTotal.toLocaleString('en-IN')}`;
 
-        // 💥 ADDED GCD AND USL TO PAYMENTS
         const payCats = ['RM', 'STATUTORY', 'TOOLS /CONSU/R&M', 'SUNDRY EXP', 'FREIGHT', 'GCD', 'USL', 'OTHERS'];
         let payTodayTotal = 0, payMtdTotal = 0;
         document.querySelector('#payments-summary-table tbody').innerHTML = payCats.map(cat => {
             const row = analysis.paymentAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
-            payTodayTotal += row.today; payMtdTotal += row.mtd;
-            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>`;
+            const roundedToday = Math.round(row.today);
+            const roundedMtd = Math.round(row.mtd);
+            payTodayTotal += roundedToday; 
+            payMtdTotal += roundedMtd;
+            return `<tr><td>${cat}</td><td>₹${roundedToday.toLocaleString('en-IN')}</td><td>₹${roundedMtd.toLocaleString('en-IN')}</td></tr>`;
         }).join('');
-        document.getElementById('pay-today-total').innerText = `₹${payTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-        document.getElementById('pay-mtd-total').innerText = `₹${payMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('pay-today-total').innerText = `₹${payTodayTotal.toLocaleString('en-IN')}`;
+        document.getElementById('pay-mtd-total').innerText = `₹${payMtdTotal.toLocaleString('en-IN')}`;
 
         const colCats = ['OE', 'RETAILS', 'OTHER INCOME', 'SECURITY DEPOSITS', 'USL', 'BANK INTEREST'];
         let colTodayTotal = 0, colMtdTotal = 0;
         document.querySelector('#collections-summary-table tbody').innerHTML = colCats.map(cat => {
             const row = analysis.collectionAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
-            colTodayTotal += row.today; colMtdTotal += row.mtd;
-            return `<tr><td>${cat}</td><td>₹${row.today.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td><td>₹${row.mtd.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td></tr>`;
+            const roundedToday = Math.round(row.today);
+            const roundedMtd = Math.round(row.mtd);
+            colTodayTotal += roundedToday; 
+            colMtdTotal += roundedMtd;
+            return `<tr><td>${cat}</td><td>₹${roundedToday.toLocaleString('en-IN')}</td><td>₹${roundedMtd.toLocaleString('en-IN')}</td></tr>`;
         }).join('');
-        document.getElementById('col-today-total').innerText = `₹${colTodayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-        document.getElementById('col-mtd-total').innerText = `₹${colMtdTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('col-today-total').innerText = `₹${colTodayTotal.toLocaleString('en-IN')}`;
+        document.getElementById('col-mtd-total').innerText = `₹${colMtdTotal.toLocaleString('en-IN')}`;
 
-        // 💥 FORCED REMARKS COLUMNS TO UPPERCASE (.toUpperCase())
+        // 💥 APPLIED Math.round() TO DATA TABLES TOO FOR CONSISTENCY
         document.getElementById('sales-body').innerHTML = tables.receivables.map((inv, index) => `
             <tr>
                 <td><strong>${index + 1}</strong></td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceDate', 'Sales', this)">${formatDate(inv.invoiceDate)}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'customer', 'Sales', this)">${inv.customer || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceNo', 'Sales', this)">${inv.invoiceNo || ''}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceValue', 'Sales', this)">₹${(inv.invoiceValue || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceValue', 'Sales', this)">₹${Math.round(inv.invoiceValue || 0).toLocaleString('en-IN')}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'marketier', 'Sales', this)">${(inv.marketier || '').toUpperCase()}</td>
             </tr>
         `).join('');
@@ -268,11 +276,11 @@ async function loadFinanceData() {
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'invoiceNumber', 'Purchase', this)">${pay.invoiceNumber || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'invoiceDate', 'Purchase', this)">${formatDate(pay.invoiceDate)}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'matRecDate', 'Purchase', this)">${formatDate(pay.matRecDate)}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'invoiceValue', 'Purchase', this)">₹${(pay.invoiceValue || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'taxableValue', 'Purchase', this)">₹${(pay.taxableValue || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'integratedTax', 'Purchase', this)">₹${(pay.integratedTax || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'centralTax', 'Purchase', this)">₹${(pay.centralTax || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'stateTax', 'Purchase', this)">₹${(pay.stateTax || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'invoiceValue', 'Purchase', this)">₹${Math.round(pay.invoiceValue || 0).toLocaleString('en-IN')}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'taxableValue', 'Purchase', this)">₹${Math.round(pay.taxableValue || 0).toLocaleString('en-IN')}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'integratedTax', 'Purchase', this)">₹${Math.round(pay.integratedTax || 0).toLocaleString('en-IN')}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'centralTax', 'Purchase', this)">₹${Math.round(pay.centralTax || 0).toLocaleString('en-IN')}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'stateTax', 'Purchase', this)">₹${Math.round(pay.stateTax || 0).toLocaleString('en-IN')}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'remarks', 'Purchase', this)">${(pay.remarks || '').toUpperCase()}</td>
             </tr>
         `).join('');
@@ -288,10 +296,10 @@ async function loadFinanceData() {
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'head', 'Bank', this)">${tx.head || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'name', 'Bank', this)">${tx.name || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'remarks', 'Bank', this)">${(tx.remarks || '').toUpperCase()}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'debit', 'Bank', this)" style="color:#c0392b; font-weight:bold;">₹${(tx.debit || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'credit', 'Bank', this)" style="color:#27ae60; font-weight:bold;">₹${(tx.credit || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'balance', 'Bank', this)">₹${(tx.balance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'finalBalance', 'Bank', this)">₹${(tx.finalBalance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'debit', 'Bank', this)" style="color:#c0392b; font-weight:bold;">₹${Math.round(tx.debit || 0).toLocaleString('en-IN')}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'credit', 'Bank', this)" style="color:#27ae60; font-weight:bold;">₹${Math.round(tx.credit || 0).toLocaleString('en-IN')}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'balance', 'Bank', this)">₹${Math.round(tx.balance || 0).toLocaleString('en-IN')}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'finalBalance', 'Bank', this)">₹${Math.round(tx.finalBalance || 0).toLocaleString('en-IN')}</td>
             </tr>
         `).join('');
 
