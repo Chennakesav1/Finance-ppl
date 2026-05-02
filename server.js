@@ -65,22 +65,29 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
     try {
         const workbook = xlsx.readFile(req.file.path, { cellDates: true });
         
-        // 1. PROCESS BANK STATEMENT
-        const firstSheetName = workbook.SheetNames[0];
-        const firstSheet = workbook.Sheets[firstSheetName];
-        const rawFirstSheet = xlsx.utils.sheet_to_json(firstSheet, { header: 1 });
+        // 1. 💥 THE FIX: SEARCH ALL SHEETS FOR BANK STATEMENT, NOT JUST THE FIRST ONE
         let isBankStmt = false;
         let bankHeaderIndex = -1;
-        
-        for (let i = 0; i < Math.min(rawFirstSheet.length, 20); i++) {
-            const rowStr = (rawFirstSheet[i] || []).join(' ').toLowerCase().replace(/[^a-z0-9]/g, '');
-            if (rowStr.includes('transactiondate') && rowStr.includes('balance')) {
-                isBankStmt = true; bankHeaderIndex = i; break;
+        let bankSheetName = null;
+
+        for (let sheetName of workbook.SheetNames) {
+            const rawSheet = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+            for (let i = 0; i < Math.min(rawSheet.length, 20); i++) {
+                const rowStr = (rawSheet[i] || []).join(' ').toLowerCase().replace(/[^a-z0-9]/g, '');
+                // If we find Transaction Date and Balance, we know THIS is the Bank Statement tab
+                if (rowStr.includes('transactiondate') && rowStr.includes('balance')) {
+                    isBankStmt = true; 
+                    bankSheetName = sheetName;
+                    bankHeaderIndex = i; 
+                    break;
+                }
             }
+            if (isBankStmt) break; // Stop searching once found
         }
 
         if (isBankStmt) {
-            const bankData = xlsx.utils.sheet_to_json(firstSheet, { range: bankHeaderIndex });
+            const bankSheet = workbook.Sheets[bankSheetName];
+            const bankData = xlsx.utils.sheet_to_json(bankSheet, { range: bankHeaderIndex });
             const bulkBankOps = [];
             
             bankData.forEach(r => {
@@ -103,7 +110,6 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
                 bulkBankOps.push({ updateOne: { filter: { transactionDate: tDate, description: desc, debit: doc.debit, credit: doc.credit }, update: { $set: doc }, upsert: true }});
             });
             if (bulkBankOps.length > 0) await BankTransaction.bulkWrite(bulkBankOps);
-            return res.json({ message: "Bank Statement Attached Successfully!" });
         }
 
         // 2. PROCESS SALES
@@ -233,19 +239,14 @@ app.get('/api/finance/all-data', async (req, res) => {
 
 app.post('/api/finance/manual-sale', async (req, res) => { await new Invoice({...req.body, invoiceDate: parseExcelDate(req.body.invoiceDate)}).save(); res.json({ message: "Manual Sale Added!" }); });
 app.post('/api/finance/manual-purchase', async (req, res) => { await new Payable({...req.body, invoiceDate: parseExcelDate(req.body.invoiceDate), matRecDate: parseExcelDate(req.body.matRecDate)}).save(); res.json({ message: "Manual Purchase Added!" }); });
-
-// 💥 NEW: ROUTE FOR MANUAL BANK ENTRY
 app.post('/api/finance/manual-bank', async (req, res) => { 
     try {
         const incomingData = { ...req.body };
-        // The HTML form sends a real datetime string (e.g., 2026-04-20T14:30), we just pass it to Date()
         incomingData.transactionDate = new Date(req.body.transactionDate);
         incomingData.valueDate = parseExcelDate(req.body.valueDate);
         await new BankTransaction(incomingData).save(); 
         res.json({ message: "Manual Bank Entry Added!" }); 
-    } catch (err) {
-        res.status(500).json({ error: "Failed to save bank entry" });
-    }
+    } catch (err) { res.status(500).json({ error: "Failed to save bank entry" }); }
 });
 
 app.put('/api/finance/update-record/:type/:id', async (req, res) => {
