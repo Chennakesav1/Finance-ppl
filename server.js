@@ -147,42 +147,61 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
             }
         }
 
-        // 3. PROCESS PURCHASES
-        const purchaseTab = getSheetName(workbook, 'Purchase');
-        if (purchaseTab) {
-            const sheet = workbook.Sheets[purchaseTab];
-            const rawArray = xlsx.utils.sheet_to_json(sheet, { header: 1 });
-            let headerRowIndex = -1;
-            for (let i = 0; i < rawArray.length; i++) {
-                const rowStr = (rawArray[i] || []).join(' ').toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (rowStr.includes('gstin') && rowStr.includes('supplier')) { headerRowIndex = i; break; }
+        // 3. PROCESS PURCHASES (Auto-detect based on headers instead of sheet name)
+        let isPurchaseStmt = false;
+        let purchaseHeaderIndex = -1;
+        let purchaseSheetName = null;
+
+        // Search all sheets for the Purchase data
+        for (let sheetName of workbook.SheetNames) {
+            const rawSheet = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+            for (let i = 0; i < Math.min(rawSheet.length, 20); i++) {
+                const rowStr = (rawSheet[i] || []).join(' ').toLowerCase().replace(/[^a-z0-9]/g, '');
+                // Check if the row contains typical purchase headers
+                if (rowStr.includes('gstin') && rowStr.includes('supplier')) { 
+                    isPurchaseStmt = true; 
+                    purchaseSheetName = sheetName;
+                    purchaseHeaderIndex = i; 
+                    break; 
+                }
             }
-
-            if (headerRowIndex !== -1) {
-                const rawPurchase = xlsx.utils.sheet_to_json(sheet, { range: headerRowIndex });
-                const bulkPurchaseOps = [];
-
-                rawPurchase.forEach(r => {
-                    const vendor = getVal(r, ['tradelegalname', 'supplier', 'name']);
-                    const invoiceNumber = getVal(r, ['invoicenumber', 'invoiceno']);
-                    if (!vendor && !invoiceNumber) return;
-
-                    const doc = {
-                        gstin: getVal(r, ['gstin']), vendor: vendor, invoiceNumber: invoiceNumber,
-                        invoiceDate: parseExcelDate(getVal(r, ['invoicedate', 'date'])),
-                        matRecDate: parseExcelDate(getVal(r, ['matrecdate', 'tallydate'])),
-                        invoiceValue: parseFloat(getVal(r, ['invoicevalue'])) || 0,
-                        taxableValue: parseFloat(getVal(r, ['taxablevalue'])) || 0,
-                        integratedTax: parseFloat(getVal(r, ['integratedtax', 'igst'])) || 0,
-                        centralTax: parseFloat(getVal(r, ['centraltax', 'cgst'])) || 0,
-                        stateTax: parseFloat(getVal(r, ['statetax', 'sgst'])) || 0,
-                        remarks: getVal(r, ['remakrs', 'remarks'])
-                    };
-                    bulkPurchaseOps.push({ updateOne: { filter: { invoiceNumber: invoiceNumber, vendor: vendor }, update: { $set: doc }, upsert: true }});
-                });
-                if (bulkPurchaseOps.length > 0) await Payable.bulkWrite(bulkPurchaseOps);
-            }
+            if (isPurchaseStmt) break;
         }
+
+        if (isPurchaseStmt) {
+            const sheet = workbook.Sheets[purchaseSheetName];
+            const rawPurchase = xlsx.utils.sheet_to_json(sheet, { range: purchaseHeaderIndex });
+            const bulkPurchaseOps = [];
+
+            rawPurchase.forEach(r => {
+                const vendor = getVal(r, ['tradelegalname', 'supplier', 'name']);
+                const invoiceNumber = getVal(r, ['invoicenumber', 'invoiceno']);
+                if (!vendor && !invoiceNumber) return;
+
+                const doc = {
+                    gstin: getVal(r, ['gstin']), 
+                    vendor: vendor, 
+                    invoiceNumber: invoiceNumber,
+                    invoiceDate: parseExcelDate(getVal(r, ['invoicedate', 'date'])),
+                    matRecDate: parseExcelDate(getVal(r, ['matrecdate', 'tallydate'])),
+                    invoiceValue: parseFloat(getVal(r, ['invoicevalue'])) || 0,
+                    taxableValue: parseFloat(getVal(r, ['taxablevalue'])) || 0,
+                    integratedTax: parseFloat(getVal(r, ['integratedtax', 'igst'])) || 0,
+                    centralTax: parseFloat(getVal(r, ['centraltax', 'cgst'])) || 0,
+                    stateTax: parseFloat(getVal(r, ['statetax', 'sgst'])) || 0,
+                    remarks: getVal(r, ['remakrs', 'remarks'])
+                };
+                bulkPurchaseOps.push({ 
+                    updateOne: { 
+                        filter: { invoiceNumber: invoiceNumber, vendor: vendor }, 
+                        update: { $set: doc }, 
+                        upsert: true 
+                    }
+                });
+            });
+            if (bulkPurchaseOps.length > 0) await Payable.bulkWrite(bulkPurchaseOps);
+        }
+        
         res.json({ message: "Excel Data Attached & Updated Successfully!" });
     } catch (error) { res.status(500).json({ error: "Failed to process Excel data." }); }
 });
