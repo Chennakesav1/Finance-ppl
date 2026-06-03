@@ -118,21 +118,21 @@ function getExportHTML() {
         <table style="width: 100%; border-collapse: separate; border-spacing: 15px 12px; border: none; table-layout: fixed;">
             <tr>
                 <td style="width: 48%; vertical-align: top; border: none; padding: 0; overflow: hidden;">
-                    <h3 style="color: #2980b9; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #3498db; padding-bottom: 2px; display: inline-block;">Sales Summary</h3>
+                    <h3 style="color: #2980b9; margin: 0 0 5px 0; font-size: 20px; border-bottom: 2px solid #3498db; padding-bottom: 2px; display: inline-block;">Sales Summary</h3>
                     ${sales}
                 </td>
                 <td style="width: 48%; vertical-align: top; border: none; padding: 0; overflow: hidden;">
-                    <h3 style="color: #d35400; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #e67e22; padding-bottom: 2px; display: inline-block;">Purchases Summary</h3>
+                    <h3 style="color: #d35400; margin: 0 0 5px 0; font-size: 20px; border-bottom: 2px solid #e67e22; padding-bottom: 2px; display: inline-block;">Purchases Summary</h3>
                     ${purchases}
                 </td>
             </tr>
             <tr>
                 <td style="width: 48%; vertical-align: top; border: none; padding: 0; overflow: hidden;">
-                    <h3 style="color: #8e44ad; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #9b59b6; padding-bottom: 2px; display: inline-block;">Payments Summary</h3>
+                    <h3 style="color: #8e44ad; margin: 0 0 5px 0; font-size: 20px; border-bottom: 2px solid #9b59b6; padding-bottom: 2px; display: inline-block;">Payments Summary</h3>
                     ${payments}
                 </td>
                 <td style="width: 48%; vertical-align: top; border: none; padding: 0; overflow: hidden;">
-                    <h3 style="color: #27ae60; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #2ecc71; padding-bottom: 2px; display: inline-block;">Collections Summary</h3>
+                    <h3 style="color: #27ae60; margin: 0 0 5px 0; font-size: 20px; border-bottom: 2px solid #2ecc71; padding-bottom: 2px; display: inline-block;">Collections Summary</h3>
                     ${collections}
                 </td>
             </tr>
