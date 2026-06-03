@@ -90,27 +90,33 @@ function getExportHTML() {
 
     return `
     <div style="font-family: Arial, sans-serif; color: #111; padding: 0; width: 100%; box-sizing: border-box;">
-        <h2 style="text-align: center; border-bottom: 1px solid #111; padding-bottom: 4px; margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase;">
+        
+        <div style="text-align: center; margin-bottom: 15px;">
+            <img src="logo.png" alt="Precifast Logo" style="height: 60px; object-fit: contain;" />
+        </div>
+
+        <h2 style="text-align: center; border-bottom: 2px solid #111; padding-bottom: 8px; margin: 0 0 15px 0; font-size: 18px; text-transform: uppercase;">
             PRECIFAST PVT LTD - Summary Dashboard (${date})
         </h2>
-        <table style="width: 100%; border-collapse: separate; border-spacing: 5px 15px; border: none; table-layout: fixed;">
+        
+        <table style="width: 100%; border-collapse: separate; border-spacing: 20px 30px; border: none; table-layout: fixed;">
             <tr>
                 <td style="width: 50%; vertical-align: top; border: none; padding: 0;">
-                    <h3 style="color: #2980b9; margin: 0 0 4px 0; font-size: 11px;">Sales Summary</h3>
+                    <h3 style="color: #2980b9; margin: 0 0 10px 0; font-size: 16px;">Sales Summary</h3>
                     ${sales}
                 </td>
                 <td style="width: 50%; vertical-align: top; border: none; padding: 0;">
-                    <h3 style="color: #d35400; margin: 0 0 4px 0; font-size: 11px;">Purchases Summary</h3>
+                    <h3 style="color: #d35400; margin: 0 0 10px 0; font-size: 16px;">Purchases Summary</h3>
                     ${purchases}
                 </td>
             </tr>
             <tr>
                 <td style="width: 50%; vertical-align: top; border: none; padding: 0;">
-                    <h3 style="color: #8e44ad; margin: 0 0 4px 0; font-size: 11px;">Payments Summary</h3>
+                    <h3 style="color: #8e44ad; margin: 0 0 10px 0; font-size: 16px;">Payments Summary</h3>
                     ${payments}
                 </td>
                 <td style="width: 50%; vertical-align: top; border: none; padding: 0;">
-                    <h3 style="color: #27ae60; margin: 0 0 4px 0; font-size: 11px;">Collections Summary</h3>
+                    <h3 style="color: #27ae60; margin: 0 0 10px 0; font-size: 16px;">Collections Summary</h3>
                     ${collections}
                 </td>
             </tr>
