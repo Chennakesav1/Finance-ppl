@@ -82,7 +82,13 @@ function autoCalculatePurchase() {
 }
 
 function getExportHTML() {
-    const date = document.getElementById('date-selector').value || new Date().toISOString().split('T')[0];
+    // 1. Get the raw date in YYYY-MM-DD format
+    const rawDate = document.getElementById('date-selector').value || new Date().toISOString().split('T')[0];
+    
+    // 2. Split it and rearrange it to DD-MM-YYYY
+    const [year, month, day] = rawDate.split('-');
+    const formattedDate = `${day}-${month}-${year}`;
+
     const sales = document.getElementById('sales-summary-table').outerHTML;
     const purchases = document.getElementById('purchase-summary-table').outerHTML;
     const payments = document.getElementById('payments-summary-table').outerHTML;
@@ -97,7 +103,7 @@ function getExportHTML() {
                 
                 <td style="text-align: center; vertical-align: middle; border: none;">
                     <h2 style="color: #2c3e50; margin: 0; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
-                        FINANCE MIS (${date})
+                        FINANCE MIS (${formattedDate})
                     </h2>
                 </td>
                 
@@ -112,21 +118,21 @@ function getExportHTML() {
         <table style="width: 100%; border-collapse: separate; border-spacing: 15px 12px; border: none; table-layout: fixed;">
             <tr>
                 <td style="width: 48%; vertical-align: top; border: none; padding: 0; overflow: hidden;">
-                    <h3 style="color: #2980b9; margin: 0 0 5px 0; font-size: 20px; border-bottom: 2px solid #3498db; padding-bottom: 2px; display: inline-block;">Sales Summary</h3>
+                    <h3 style="color: #2980b9; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #3498db; padding-bottom: 2px; display: inline-block;">Sales Summary</h3>
                     ${sales}
                 </td>
                 <td style="width: 48%; vertical-align: top; border: none; padding: 0; overflow: hidden;">
-                    <h3 style="color: #d35400; margin: 0 0 5px 0; font-size: 20px; border-bottom: 2px solid #e67e22; padding-bottom: 2px; display: inline-block;">Purchases Summary</h3>
+                    <h3 style="color: #d35400; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #e67e22; padding-bottom: 2px; display: inline-block;">Purchases Summary</h3>
                     ${purchases}
                 </td>
             </tr>
             <tr>
                 <td style="width: 48%; vertical-align: top; border: none; padding: 0; overflow: hidden;">
-                    <h3 style="color: #8e44ad; margin: 0 0 5px 0; font-size: 20px; border-bottom: 2px solid #9b59b6; padding-bottom: 2px; display: inline-block;">Payments Summary</h3>
+                    <h3 style="color: #8e44ad; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #9b59b6; padding-bottom: 2px; display: inline-block;">Payments Summary</h3>
                     ${payments}
                 </td>
                 <td style="width: 48%; vertical-align: top; border: none; padding: 0; overflow: hidden;">
-                    <h3 style="color: #27ae60; margin: 0 0 5px 0; font-size: 20px; border-bottom: 2px solid #2ecc71; padding-bottom: 2px; display: inline-block;">Collections Summary</h3>
+                    <h3 style="color: #27ae60; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #2ecc71; padding-bottom: 2px; display: inline-block;">Collections Summary</h3>
                     ${collections}
                 </td>
             </tr>
