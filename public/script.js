@@ -7,7 +7,7 @@ function switchTab(tabId) {
     document.querySelectorAll('.nav-links li').forEach(l => l.classList.remove('active'));
     document.getElementById(tabId).classList.add('active-tab');
     event.currentTarget.classList.add('active');
-    const titles = { 'summary':'Summary Dashboard', 'sales':'Sales Register', 'purchase':'Purchase Register', 'payments':'Payments Register', 'collections':'Collections Register', 'bank':'Bank Statement Register', 'manual':'Manual Entry', 'upload':'Upload Data'};
+    const titles = { 'summary':'Summary Dashboard', 'sales':'Sales Register', 'purchase':'Purchase Register', 'payments':'Payments Register', 'collections':'Collections Register', 'bank':'Bank Statement Register', 'ledgers':'Sundry Ledgers', 'manual':'Manual Entry', 'upload':'Upload Data'};
     document.getElementById('page-title').innerText = titles[tabId];
 }
 
@@ -268,16 +268,84 @@ async function loadFinanceData() {
         // 💥 APPLIED Math.round() TO ALL SUMMARY DASHBOARD VALUES 
         // This makes >= 0.5 round up to 1, and < 0.5 round down to 0.
 
-        const salesCats = ['OE', 'RETAILS', 'SS DEALERS'];
+        // OE sub-analysis & Retails sub-analysis come from server
+        const oeSubAnalysis = analysis.oeSubAnalysis || { BAJAJ: {today:0,mtd:0}, 'GABRIEL INDIA LIMITED': {today:0,mtd:0}, 'OTHER OE': {today:0,mtd:0} };
+        const retailSubAnalysis = analysis.retailSubAnalysis || { AUTO: {today:0,mtd:0}, INDUSTRIAL: {today:0,mtd:0}, SS: {today:0,mtd:0} };
+
         let sTodayTotal = 0, sMtdTotal = 0;
-        document.querySelector('#sales-summary-table tbody').innerHTML = salesCats.map(cat => {
-            const row = analysis.salesAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
-            const roundedToday = Math.round(row.today);
-            const roundedMtd = Math.round(row.mtd);
-            sTodayTotal += roundedToday; 
-            sMtdTotal += roundedMtd;
-            return `<tr><td>${cat}</td><td>₹${roundedToday.toLocaleString('en-IN')}</td><td>₹${roundedMtd.toLocaleString('en-IN')}</td></tr>`;
-        }).join('');
+        let salesRows = '';
+
+        // ── OE ROW (main) ──────────────────────────────────────────────────────
+        const oeRow = analysis.salesAnalysis.find(r => matchCategory('OE', r._id)) || { today: 0, mtd: 0 };
+        const oeToday = Math.round(oeRow.today), oeMtd = Math.round(oeRow.mtd);
+        sTodayTotal += oeToday; sMtdTotal += oeMtd;
+        salesRows += `<tr style="font-weight:600; background:#f0f7ff;">
+            <td>OE</td>
+            <td>₹${oeToday.toLocaleString('en-IN')}</td>
+            <td>₹${oeMtd.toLocaleString('en-IN')}</td>
+        </tr>`;
+        // OE sub-rows: Bajaj
+        const bajajT = Math.round(oeSubAnalysis['BAJAJ']?.today || 0);
+        const bajajM = Math.round(oeSubAnalysis['BAJAJ']?.mtd || 0);
+        salesRows += `<tr style="background:#f8fbff; color:#555; font-size:12px;">
+            <td style="padding-left:28px;">↳ Bajaj</td>
+            <td>₹${bajajT.toLocaleString('en-IN')}</td>
+            <td>₹${bajajM.toLocaleString('en-IN')}</td>
+        </tr>`;
+        // OE sub-rows: Gabriel
+        const gabrielT = Math.round(oeSubAnalysis['GABRIEL INDIA LIMITED']?.today || 0);
+        const gabrielM = Math.round(oeSubAnalysis['GABRIEL INDIA LIMITED']?.mtd || 0);
+        salesRows += `<tr style="background:#f8fbff; color:#555; font-size:12px;">
+            <td style="padding-left:28px;">↳ Gabriel India Limited</td>
+            <td>₹${gabrielT.toLocaleString('en-IN')}</td>
+            <td>₹${gabrielM.toLocaleString('en-IN')}</td>
+        </tr>`;
+
+        // ── RETAILS ROW (main) ─────────────────────────────────────────────────
+        const rRow = analysis.salesAnalysis.find(r => matchCategory('RETAILS', r._id)) || { today: 0, mtd: 0 };
+        const rToday = Math.round(rRow.today), rMtd = Math.round(rRow.mtd);
+        sTodayTotal += rToday; sMtdTotal += rMtd;
+        salesRows += `<tr style="font-weight:600; background:#f0fff4;">
+            <td>Retails</td>
+            <td>₹${rToday.toLocaleString('en-IN')}</td>
+            <td>₹${rMtd.toLocaleString('en-IN')}</td>
+        </tr>`;
+        // Retails sub-rows: Auto
+        const autoT = Math.round(retailSubAnalysis['AUTO']?.today || 0);
+        const autoM = Math.round(retailSubAnalysis['AUTO']?.mtd || 0);
+        salesRows += `<tr style="background:#f5fff8; color:#555; font-size:12px;">
+            <td style="padding-left:28px;">↳ Auto</td>
+            <td>₹${autoT.toLocaleString('en-IN')}</td>
+            <td>₹${autoM.toLocaleString('en-IN')}</td>
+        </tr>`;
+        // Retails sub-rows: Industrial
+        const indT = Math.round(retailSubAnalysis['INDUSTRIAL']?.today || 0);
+        const indM = Math.round(retailSubAnalysis['INDUSTRIAL']?.mtd || 0);
+        salesRows += `<tr style="background:#f5fff8; color:#555; font-size:12px;">
+            <td style="padding-left:28px;">↳ Industrial</td>
+            <td>₹${indT.toLocaleString('en-IN')}</td>
+            <td>₹${indM.toLocaleString('en-IN')}</td>
+        </tr>`;
+        // Retails sub-rows: SS
+        const ssRetT = Math.round(retailSubAnalysis['SS']?.today || 0);
+        const ssRetM = Math.round(retailSubAnalysis['SS']?.mtd || 0);
+        salesRows += `<tr style="background:#f5fff8; color:#555; font-size:12px;">
+            <td style="padding-left:28px;">↳ SS</td>
+            <td>₹${ssRetT.toLocaleString('en-IN')}</td>
+            <td>₹${ssRetM.toLocaleString('en-IN')}</td>
+        </tr>`;
+
+        // ── SS DEALERS ROW ─────────────────────────────────────────────────────
+        const ssRow = analysis.salesAnalysis.find(r => matchCategory('SS DEALERS', r._id)) || { today: 0, mtd: 0 };
+        const ssDToday = Math.round(ssRow.today), ssDMtd = Math.round(ssRow.mtd);
+        sTodayTotal += ssDToday; sMtdTotal += ssDMtd;
+        salesRows += `<tr style="font-weight:600;">
+            <td>SS Dealers</td>
+            <td>₹${ssDToday.toLocaleString('en-IN')}</td>
+            <td>₹${ssDMtd.toLocaleString('en-IN')}</td>
+        </tr>`;
+
+        document.querySelector('#sales-summary-table tbody').innerHTML = salesRows;
         document.getElementById('s-today-total').innerText = `₹${sTodayTotal.toLocaleString('en-IN')}`;
         document.getElementById('s-mtd-total').innerText = `₹${sMtdTotal.toLocaleString('en-IN')}`;
 
@@ -427,4 +495,95 @@ document.getElementById('manual-bank-form').addEventListener('submit', async (e)
     showToast("✅ Bank Transaction Saved"); document.getElementById('manual-bank-form').reset(); loadFinanceData();
 });
 
-document.addEventListener('DOMContentLoaded', () => { document.getElementById('date-selector').value = ''; loadFinanceData(); });
+
+// ─── SUNDRY LEDGERS ───────────────────────────────────────────────────────────
+
+let allLedgersData = [];
+
+async function loadSundryLedgers() {
+    try {
+        const res = await fetch(`${API_BASE}/api/finance/sundry-ledgers`);
+        allLedgersData = await res.json();
+        renderLedgersTable(allLedgersData);
+    } catch (e) { console.error('Failed to load ledgers', e); }
+}
+
+function renderLedgersTable(data) {
+    // Update stat cards
+    document.getElementById('ledger-stat-auto').innerText = data.filter(l => l.sectorType === 'Auto').length;
+    document.getElementById('ledger-stat-ind').innerText = data.filter(l => l.sectorType === 'Industrial').length;
+    document.getElementById('ledger-stat-ss').innerText = data.filter(l => l.sectorType === 'SS').length;
+    document.getElementById('ledger-stat-oe').innerText = data.filter(l => l.sectorType === 'OE').length;
+    document.getElementById('ledger-stat-total').innerText = data.length;
+
+    const sectorColors = { Auto: '#3498db', Industrial: '#e67e22', SS: '#9b59b6', OE: '#27ae60', Other: '#95a5a6' };
+    document.getElementById('ledgers-body').innerHTML = data.map((l, i) => {
+        const color = sectorColors[l.sectorType] || '#95a5a6';
+        return `<tr>
+            <td><strong>${i + 1}</strong></td>
+            <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${l._id}', 'ledgerName', 'Ledger', this)">${l.ledgerName || ''}</td>
+            <td>${l.category || ''}</td>
+            <td><span style="background:${color}22; color:${color}; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:600;">${l.sectorType || ''}</span></td>
+            <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${l._id}', 'gstin', 'Ledger', this)">${l.gstin || ''}</td>
+            <td><button onclick="deleteLedger('${l._id}')" style="background:#e74c3c; color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:12px;"><i class="fas fa-trash"></i></button></td>
+        </tr>`;
+    }).join('');
+}
+
+function filterLedgersTable() {
+    const search = (document.getElementById('ledger-search').value || '').toLowerCase();
+    const sector = document.getElementById('ledger-sector-filter').value;
+    const filtered = allLedgersData.filter(l => {
+        const matchSearch = !search || (l.ledgerName || '').toLowerCase().includes(search) || (l.category || '').toLowerCase().includes(search);
+        const matchSector = !sector || l.sectorType === sector;
+        return matchSearch && matchSector;
+    });
+    renderLedgersTable(filtered);
+}
+
+function showAddLedgerForm() {
+    const wrap = document.getElementById('add-ledger-form-wrap');
+    wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveLedgerEntry() {
+    const name = document.getElementById('l-name').value.trim();
+    const category = document.getElementById('l-category').value;
+    const gstin = document.getElementById('l-gstin').value.trim();
+    const sectorType = document.getElementById('l-sector').value;
+
+    if (!name || !category) { showToast('❌ Ledger Name and Category are required', true); return; }
+
+    try {
+        await fetch(`${API_BASE}/api/finance/sundry-ledger`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ledgerName: name, category, gstin: gstin || null, sectorType })
+        });
+        showToast('✅ Ledger Saved!');
+        document.getElementById('l-name').value = '';
+        document.getElementById('l-gstin').value = '';
+        document.getElementById('add-ledger-form-wrap').style.display = 'none';
+        loadSundryLedgers();
+    } catch (e) { showToast('❌ Failed to save ledger', true); }
+}
+
+async function deleteLedger(id) {
+    if (!confirm('Delete this ledger entry?')) return;
+    try {
+        await fetch(`${API_BASE}/api/finance/sundry-ledger/${id}`, { method: 'DELETE' });
+        showToast('✅ Ledger Deleted');
+        loadSundryLedgers();
+    } catch (e) { showToast('❌ Failed to delete', true); }
+}
+
+function exportLedgers() {
+    const headers = ['S.No', 'Ledger Name', 'Category', 'Sector Type', 'GSTIN'];
+    const rows = allLedgersData.map((l, i) => [i + 1, l.ledgerName, l.category, l.sectorType, l.gstin || '']);
+    const csvContent = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv' }));
+    link.download = 'Sundry_Ledgers.csv';
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+
+document.addEventListener('DOMContentLoaded', () => { document.getElementById('date-selector').value = ''; loadFinanceData(); loadSundryLedgers(); });

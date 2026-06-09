@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const cors = require('cors');
-const { Invoice, Payable, BankTransaction } = require('./models/Finance');
+const { Invoice, Payable, BankTransaction, SundryLedger } = require('./models/Finance');
 
 const app = express();
 app.use(cors());
@@ -26,7 +26,6 @@ const parseExcelDate = (val) => {
     let strVal = String(val).trim();
     const dmyMatch = strVal.match(/^(\d{2})-(\d{2})-(\d{4})/);
     if (dmyMatch) return new Date(Date.UTC(parseInt(dmyMatch[3]), parseInt(dmyMatch[2]) - 1, parseInt(dmyMatch[1]), 12, 0, 0));
-
     const d = new Date(val);
     if (isNaN(d.valueOf())) return null;
     return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0));
@@ -35,7 +34,6 @@ const parseExcelDate = (val) => {
 const parseExcelDateTime = (val) => {
     if (!val || val === '') return null; 
     if (typeof val === 'number') return new Date((val - 25569) * 86400 * 1000); 
-    
     let strVal = String(val).trim();
     const dmyTimeMatch = strVal.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})/);
     if (dmyTimeMatch) {
@@ -43,7 +41,6 @@ const parseExcelDateTime = (val) => {
     }
     const dmyMatch = strVal.match(/^(\d{2})-(\d{2})-(\d{4})/);
     if (dmyMatch) return new Date(Date.UTC(parseInt(dmyMatch[3]), parseInt(dmyMatch[2]) - 1, parseInt(dmyMatch[1]), 12, 0, 0));
-
     const d = new Date(val);
     if (isNaN(d.valueOf())) return null;
     return d;
@@ -65,41 +62,31 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
     try {
         const workbook = xlsx.readFile(req.file.path, { cellDates: true });
         
-        // 1. 💥 THE FIX: SEARCH ALL SHEETS FOR BANK STATEMENT, NOT JUST THE FIRST ONE
-        let isBankStmt = false;
-        let bankHeaderIndex = -1;
-        let bankSheetName = null;
-
+        // 1. BANK STATEMENT
+        let isBankStmt = false, bankHeaderIndex = -1, bankSheetName = null;
         for (let sheetName of workbook.SheetNames) {
             const rawSheet = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
             for (let i = 0; i < Math.min(rawSheet.length, 20); i++) {
                 const rowStr = (rawSheet[i] || []).join(' ').toLowerCase().replace(/[^a-z0-9]/g, '');
-                // If we find Transaction Date and Balance, we know THIS is the Bank Statement tab
                 if (rowStr.includes('transactiondate') && rowStr.includes('balance')) {
-                    isBankStmt = true; 
-                    bankSheetName = sheetName;
-                    bankHeaderIndex = i; 
-                    break;
+                    isBankStmt = true; bankSheetName = sheetName; bankHeaderIndex = i; break;
                 }
             }
-            if (isBankStmt) break; // Stop searching once found
+            if (isBankStmt) break;
         }
 
         if (isBankStmt) {
             const bankSheet = workbook.Sheets[bankSheetName];
             const bankData = xlsx.utils.sheet_to_json(bankSheet, { range: bankHeaderIndex });
             const bulkBankOps = [];
-            
             bankData.forEach(r => {
                 const desc = getVal(r, ['description']);
                 const tDate = parseExcelDateTime(getVal(r, ['transactiondate']));
                 if (!desc || !tDate) return;
-
                 const keys = Object.keys(r);
                 const balanceKeys = keys.filter(k => k.toLowerCase().includes('balance'));
                 const firstBal = balanceKeys.length > 0 ? parseFloat(r[balanceKeys[0]]) : 0;
                 const secondBal = balanceKeys.length > 1 ? parseFloat(r[balanceKeys[1]]) : 0;
-
                 const doc = {
                     transactionDate: tDate, valueDate: parseExcelDate(getVal(r, ['valuedate'])),
                     chequeNo: getVal(r, ['chequeno', 'cheque']), description: desc, branchCode: getVal(r, ['branchcode']),
@@ -112,7 +99,7 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
             if (bulkBankOps.length > 0) await BankTransaction.bulkWrite(bulkBankOps);
         }
 
-        // 2. PROCESS SALES
+        // 2. SALES
         const salesTab = getSheetName(workbook, 'Sales');
         if (salesTab) {
             const sheet = workbook.Sheets[salesTab];
@@ -122,21 +109,17 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
                 const rowStr = (rawArray[i] || []).join(' ').toLowerCase().replace(/[^a-z0-9]/g, '');
                 if (rowStr.includes('vchno') && rowStr.includes('particulars')) { headerRowIndex = i; break; }
             }
-
             if (headerRowIndex !== -1) {
                 const rawSales = xlsx.utils.sheet_to_json(sheet, { range: headerRowIndex });
                 const bulkSalesOps = [];
-
                 rawSales.forEach(r => {
                     let customerName = r['Particulars'];
                     if (customerName && (customerName.trim().toLowerCase() === 'by' || customerName.trim().toLowerCase() === 'to')) {
                         customerName = r['__EMPTY'] || r['__EMPTY_1'] || r['__EMPTY_2'];
                     } else if (!customerName) { customerName = r['__EMPTY'] || r['__EMPTY_1']; }
-
                     const invNo = getVal(r, ['vchno', 'invoiceno']);
                     if (!invNo) return; 
                     let invoiceValue = parseFloat(getVal(r, ['credit'])) || parseFloat(getVal(r, ['debit'])) || parseFloat(getVal(r, ['invoicevalue'])) || 0;
-
                     const doc = {
                         invoiceNo: invNo, invoiceDate: parseExcelDate(getVal(r, ['date', 'invoicedate'])),
                         customer: customerName, invoiceValue: invoiceValue, marketier: getVal(r, ['remakrs', 'remarks', 'marketier'])
@@ -147,22 +130,14 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
             }
         }
 
-        // 3. PROCESS PURCHASES (Auto-detect based on headers instead of sheet name)
-        let isPurchaseStmt = false;
-        let purchaseHeaderIndex = -1;
-        let purchaseSheetName = null;
-
-        // Search all sheets for the Purchase data
+        // 3. PURCHASES
+        let isPurchaseStmt = false, purchaseHeaderIndex = -1, purchaseSheetName = null;
         for (let sheetName of workbook.SheetNames) {
             const rawSheet = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
             for (let i = 0; i < Math.min(rawSheet.length, 20); i++) {
                 const rowStr = (rawSheet[i] || []).join(' ').toLowerCase().replace(/[^a-z0-9]/g, '');
-                // Check if the row contains typical purchase headers
                 if (rowStr.includes('gstin') && rowStr.includes('supplier')) { 
-                    isPurchaseStmt = true; 
-                    purchaseSheetName = sheetName;
-                    purchaseHeaderIndex = i; 
-                    break; 
+                    isPurchaseStmt = true; purchaseSheetName = sheetName; purchaseHeaderIndex = i; break; 
                 }
             }
             if (isPurchaseStmt) break;
@@ -172,16 +147,12 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
             const sheet = workbook.Sheets[purchaseSheetName];
             const rawPurchase = xlsx.utils.sheet_to_json(sheet, { range: purchaseHeaderIndex });
             const bulkPurchaseOps = [];
-
             rawPurchase.forEach(r => {
                 const vendor = getVal(r, ['tradelegalname', 'supplier', 'name']);
                 const invoiceNumber = getVal(r, ['invoicenumber', 'invoiceno']);
                 if (!vendor && !invoiceNumber) return;
-
                 const doc = {
-                    gstin: getVal(r, ['gstin']), 
-                    vendor: vendor, 
-                    invoiceNumber: invoiceNumber,
+                    gstin: getVal(r, ['gstin']), vendor: vendor, invoiceNumber: invoiceNumber,
                     invoiceDate: parseExcelDate(getVal(r, ['invoicedate', 'date'])),
                     matRecDate: parseExcelDate(getVal(r, ['matrecdate', 'tallydate'])),
                     invoiceValue: parseFloat(getVal(r, ['invoicevalue'])) || 0,
@@ -191,20 +162,95 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
                     stateTax: parseFloat(getVal(r, ['statetax', 'sgst'])) || 0,
                     remarks: getVal(r, ['remakrs', 'remarks'])
                 };
-                bulkPurchaseOps.push({ 
-                    updateOne: { 
-                        filter: { invoiceNumber: invoiceNumber, vendor: vendor }, 
-                        update: { $set: doc }, 
-                        upsert: true 
-                    }
-                });
+                bulkPurchaseOps.push({ updateOne: { filter: { invoiceNumber: invoiceNumber, vendor: vendor }, update: { $set: doc }, upsert: true }});
             });
             if (bulkPurchaseOps.length > 0) await Payable.bulkWrite(bulkPurchaseOps);
         }
+
+        // 4. SUNDRY LEDGERS — detect "List of Ledgers" sheet OR any sheet with ledger-like structure
+        let sundrySheetName = null;
+        for (let sheetName of workbook.SheetNames) {
+            const clean = sheetName.replace(/\s/g, '').toLowerCase();
+            if (clean.includes('listofledger') || clean.includes('ledger') || clean.includes('sundry')) {
+                sundrySheetName = sheetName; break;
+            }
+        }
+
+        if (sundrySheetName) {
+            const sheet = workbook.Sheets[sundrySheetName];
+            const rawArray = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+            const bulkLedgerOps = [];
+            let currentCategory = 'UNCATEGORIZED';
+
+            // Category headers in the Excel — all-caps rows with no sub-data
+            const CATEGORY_KEYWORDS = ['AUTO SECTOR', 'INDUSTRIAL', 'SS DEALER', 'OE', 'BAJAJ', 'GABRIEL'];
+
+            rawArray.forEach((row) => {
+                const firstVal = (row[0] || '').toString().trim();
+                if (!firstVal) return;
+
+                // Check if this row is a category header (all caps, no extra columns)
+                const allCols = row.filter(v => v !== null && v !== undefined && v !== '');
+                const isHeader = allCols.length === 1 && firstVal === firstVal.toUpperCase() && firstVal.length > 3;
+
+                if (isHeader) {
+                    currentCategory = firstVal;
+                    return;
+                }
+
+                // Determine sub-category type from category header
+                let sectorType = 'Other';
+                const catUpper = currentCategory.toUpperCase();
+                if (catUpper.includes('AUTO')) sectorType = 'Auto';
+                else if (catUpper.includes('INDUSTRIAL')) sectorType = 'Industrial';
+                else if (catUpper.includes('SS')) sectorType = 'SS';
+                else if (catUpper.includes('OE') || catUpper.includes('BAJAJ') || catUpper.includes('GABRIEL')) sectorType = 'OE';
+
+                const doc = {
+                    ledgerName: firstVal,
+                    category: currentCategory,
+                    sectorType: sectorType,
+                    gstin: (row[1] || '').toString().trim() || null,
+                    extra: (row[2] || '').toString().trim() || null
+                };
+                bulkLedgerOps.push({ updateOne: { filter: { ledgerName: firstVal }, update: { $set: doc }, upsert: true }});
+            });
+
+            if (bulkLedgerOps.length > 0) await SundryLedger.bulkWrite(bulkLedgerOps);
+        }
         
         res.json({ message: "Excel Data Attached & Updated Successfully!" });
-    } catch (error) { res.status(500).json({ error: "Failed to process Excel data." }); }
+    } catch (error) { console.error(error); res.status(500).json({ error: "Failed to process Excel data." }); }
 });
+
+// ─── SUNDRY LEDGERS API ───────────────────────────────────────────────────────
+
+app.get('/api/finance/sundry-ledgers', async (req, res) => {
+    try {
+        const ledgers = await SundryLedger.find({}).sort({ category: 1, ledgerName: 1 });
+        res.json(ledgers);
+    } catch (error) { res.status(500).json({ error: "Failed to fetch ledgers" }); }
+});
+
+app.post('/api/finance/sundry-ledger', async (req, res) => {
+    try {
+        await SundryLedger.findOneAndUpdate(
+            { ledgerName: req.body.ledgerName },
+            { $set: req.body },
+            { upsert: true }
+        );
+        res.json({ message: "Ledger entry saved!" });
+    } catch (error) { res.status(500).json({ error: "Failed to save ledger" }); }
+});
+
+app.delete('/api/finance/sundry-ledger/:id', async (req, res) => {
+    try {
+        await SundryLedger.findByIdAndDelete(req.params.id);
+        res.json({ message: "Ledger deleted!" });
+    } catch (error) { res.status(500).json({ error: "Failed to delete ledger" }); }
+});
+
+// ─── MAIN DATA API ────────────────────────────────────────────────────────────
 
 app.get('/api/finance/all-data', async (req, res) => {
     try {
@@ -232,10 +278,53 @@ app.get('/api/finance/all-data', async (req, res) => {
         const payables = await Payable.find({}).sort({ matRecDate: -1 });
         const bankTransactions = await BankTransaction.find({}).sort({ transactionDate: -1 });
 
+        // Load all ledgers to resolve OE sub-categories (Bajaj / Gabriel)
+        const allLedgers = await SundryLedger.find({});
+        const bajajLedgerNames = allLedgers
+            .filter(l => l.category && l.category.toUpperCase().includes('BAJAJ'))
+            .map(l => l.ledgerName.toUpperCase());
+        const gabrielLedgerNames = allLedgers
+            .filter(l => l.category && l.category.toUpperCase().includes('GABRIEL'))
+            .map(l => l.ledgerName.toUpperCase());
+
+        // Standard marketier-based aggregation
         const salesAnalysis = await Invoice.aggregate([
             { $match: matchMTDSales },
             { $group: { _id: '$marketier', mtd: { $sum: '$invoiceValue' }, today: { $sum: { $cond: [ { $and: [ { $gte: ['$invoiceDate', startOfDay] }, { $lte: ['$invoiceDate', endOfDay] } ] }, '$invoiceValue', 0 ] } } } }
         ]);
+
+        // OE sub-breakdown: Bajaj vs Gabriel vs Other OE
+        const oeInvoices = await Invoice.find({ ...matchMTDSales, $expr: { $eq: [{ $toUpper: '$marketier' }, 'OE'] } });
+        const oeSubAnalysis = { BAJAJ: { today: 0, mtd: 0 }, 'GABRIEL INDIA LIMITED': { today: 0, mtd: 0 }, 'OTHER OE': { today: 0, mtd: 0 } };
+        oeInvoices.forEach(inv => {
+            const custUpper = (inv.customer || '').toUpperCase();
+            const isToday = inv.invoiceDate >= startOfDay && inv.invoiceDate <= endOfDay;
+            let bucket = 'OTHER OE';
+            if (bajajLedgerNames.some(n => custUpper.includes(n) || n.includes(custUpper)) || custUpper.includes('BAJAJ')) bucket = 'BAJAJ';
+            else if (gabrielLedgerNames.some(n => custUpper.includes(n) || n.includes(custUpper)) || custUpper.includes('GABRIEL')) bucket = 'GABRIEL INDIA LIMITED';
+            oeSubAnalysis[bucket].mtd += inv.invoiceValue || 0;
+            if (isToday) oeSubAnalysis[bucket].today += inv.invoiceValue || 0;
+        });
+
+        // Retails sub-breakdown: Auto vs Industrial vs SS
+        const retailInvoices = await Invoice.find({ ...matchMTDSales, $expr: { $eq: [{ $toUpper: '$marketier' }, 'RETAILS'] } });
+        const autoLedgerNames = allLedgers.filter(l => l.sectorType === 'Auto').map(l => l.ledgerName.toUpperCase());
+        const industrialLedgerNames = allLedgers.filter(l => l.sectorType === 'Industrial').map(l => l.ledgerName.toUpperCase());
+        const ssLedgerNames = allLedgers.filter(l => l.sectorType === 'SS').map(l => l.ledgerName.toUpperCase());
+
+        const retailSubAnalysis = { AUTO: { today: 0, mtd: 0 }, INDUSTRIAL: { today: 0, mtd: 0 }, SS: { today: 0, mtd: 0 } };
+        retailInvoices.forEach(inv => {
+            const custUpper = (inv.customer || '').toUpperCase();
+            const isToday = inv.invoiceDate >= startOfDay && inv.invoiceDate <= endOfDay;
+            let bucket = null;
+            if (autoLedgerNames.some(n => custUpper === n || custUpper.includes(n) || n.includes(custUpper))) bucket = 'AUTO';
+            else if (industrialLedgerNames.some(n => custUpper === n || custUpper.includes(n) || n.includes(custUpper))) bucket = 'INDUSTRIAL';
+            else if (ssLedgerNames.some(n => custUpper === n || custUpper.includes(n) || n.includes(custUpper))) bucket = 'SS';
+            if (bucket) {
+                retailSubAnalysis[bucket].mtd += inv.invoiceValue || 0;
+                if (isToday) retailSubAnalysis[bucket].today += inv.invoiceValue || 0;
+            }
+        });
 
         const purchaseAnalysis = await Payable.aggregate([
             { $match: matchMTDPurchase },
@@ -252,8 +341,12 @@ app.get('/api/finance/all-data', async (req, res) => {
             { $group: { _id: '$remarks', mtd: { $sum: '$credit' }, today: { $sum: { $cond: [ { $and: [ { $gte: ['$transactionDate', startOfDay] }, { $lte: ['$transactionDate', endOfDay] } ] }, '$credit', 0 ] } } } }
         ]);
 
-        res.json({ currentDate: targetDate.toISOString().split('T')[0], tables: { receivables, payables, bankTransactions }, analysis: { salesAnalysis, purchaseAnalysis, paymentAnalysis, collectionAnalysis } });
-    } catch (error) { res.status(500).json({ error: "Failed to fetch data" }); }
+        res.json({
+            currentDate: targetDate.toISOString().split('T')[0],
+            tables: { receivables, payables, bankTransactions },
+            analysis: { salesAnalysis, purchaseAnalysis, paymentAnalysis, collectionAnalysis, oeSubAnalysis, retailSubAnalysis }
+        });
+    } catch (error) { console.error(error); res.status(500).json({ error: "Failed to fetch data" }); }
 });
 
 app.post('/api/finance/manual-sale', async (req, res) => { await new Invoice({...req.body, invoiceDate: parseExcelDate(req.body.invoiceDate)}).save(); res.json({ message: "Manual Sale Added!" }); });
@@ -272,13 +365,11 @@ app.put('/api/finance/update-record/:type/:id', async (req, res) => {
     try {
         const { type, id } = req.params;
         const { field, value } = req.body;
-        let Model = type === 'Sales' ? Invoice : (type === 'Purchase' ? Payable : BankTransaction);
-        
+        let Model = type === 'Sales' ? Invoice : (type === 'Purchase' ? Payable : (type === 'Ledger' ? SundryLedger : BankTransaction));
         let parsedValue = value;
         if (field === 'transactionDate') parsedValue = parseExcelDateTime(value);
         else if (field.toLowerCase().includes('date')) parsedValue = parseExcelDate(value);
         else if (['invoiceValue', 'taxableValue', 'integratedTax', 'centralTax', 'stateTax', 'debit', 'credit', 'balance', 'finalBalance'].includes(field)) parsedValue = Number(value);
-        
         await Model.findByIdAndUpdate(id, { [field]: parsedValue });
         res.json({ message: "Cell Updated Successfully!" });
     } catch (error) { res.status(500).json({ error: "Failed to update record." }); }

@@ -174,6 +174,7 @@
                 <li onclick="switchTab('purchase')"><i class="fas fa-shopping-cart"></i> Purchase</li>
 
                 <li onclick="switchTab('bank')"><i class="fas fa-university"></i> Bank Statement</li>
+                <li onclick="switchTab('ledgers')"><i class="fas fa-book"></i> Sundry Ledgers</li>
 
                 <li onclick="switchTab('manual')"><i class="fas fa-edit"></i> Manual Entry</li>
                 <li onclick="switchTab('upload')"><i class="fas fa-file-excel"></i> Upload MIS</li>
@@ -481,6 +482,110 @@
 
                 </div>
             </section>
+            <section id="ledgers" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2>Sundry Ledgers</h2>
+                    <div>
+                        <button class="btn-primary" onclick="showAddLedgerForm()" style="margin-right:8px;"><i class="fas fa-plus"></i> Add Ledger</button>
+                        <button class="export-btn" onclick="exportLedgers()"><i class="fas fa-file-excel"></i> Export</button>
+                    </div>
+                </div>
+
+                <!-- Quick Add Form (hidden by default) -->
+                <div id="add-ledger-form-wrap" style="display:none; background:#fff; border-radius:10px; padding:20px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.06); max-width:600px;">
+                    <h3 style="margin-bottom:12px; color:#2c3e50;">Add / Update Ledger Entry</h3>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div>
+                            <label class="form-label">Ledger Name *</label>
+                            <input type="text" id="l-name" placeholder="Customer / Ledger Name" style="width:100%; margin-top:6px;">
+                        </div>
+                        <div>
+                            <label class="form-label">Category *</label>
+                            <select id="l-category" style="width:100%; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:4px;">
+                                <option value="" disabled selected>Select Category</option>
+                                <option value="AUTO SECTOR CUSTOMERS">AUTO SECTOR CUSTOMERS</option>
+                                <option value="INDUSTRIAL CUSTOMERS">INDUSTRIAL CUSTOMERS</option>
+                                <option value="SS DEALERS">SS DEALERS</option>
+                                <option value="OE - BAJAJ">OE - BAJAJ</option>
+                                <option value="OE - GABRIEL INDIA LIMITED">OE - GABRIEL INDIA LIMITED</option>
+                                <option value="OTHER">OTHER</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">GSTIN (Optional)</label>
+                            <input type="text" id="l-gstin" placeholder="GSTIN Number" style="width:100%; margin-top:6px;">
+                        </div>
+                        <div>
+                            <label class="form-label">Sector Type</label>
+                            <select id="l-sector" style="width:100%; margin-top:6px; padding:10px; border:1px solid #ccc; border-radius:4px;">
+                                <option value="Auto">Auto</option>
+                                <option value="Industrial">Industrial</option>
+                                <option value="SS">SS</option>
+                                <option value="OE">OE</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-top:14px; display:flex; gap:10px;">
+                        <button class="btn-primary" onclick="saveLedgerEntry()">Save Ledger</button>
+                        <button onclick="document.getElementById('add-ledger-form-wrap').style.display='none'" style="padding:10px 15px; border:1px solid #ccc; border-radius:4px; cursor:pointer; background:#fff;">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Filter Bar -->
+                <div style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
+                    <input type="text" id="ledger-search" class="search-bar" placeholder="🔍 Search by Name, Category..." style="flex:1; min-width:200px; margin-bottom:0;" onkeyup="filterLedgersTable()">
+                    <select id="ledger-sector-filter" onchange="filterLedgersTable()" style="padding:10px; border:1px solid #ccc; border-radius:6px; min-width:160px;">
+                        <option value="">All Sectors</option>
+                        <option value="Auto">Auto</option>
+                        <option value="Industrial">Industrial</option>
+                        <option value="SS">SS</option>
+                        <option value="OE">OE</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <!-- Ledger Stats Cards -->
+                <div style="display:flex; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
+                    <div class="card" style="flex:1; min-width:140px; text-align:center; border-top:4px solid #3498db;">
+                        <div style="font-size:12px; color:#7f8c8d; font-weight:600;">AUTO</div>
+                        <div id="ledger-stat-auto" style="font-size:22px; font-weight:bold; color:#3498db;">0</div>
+                    </div>
+                    <div class="card" style="flex:1; min-width:140px; text-align:center; border-top:4px solid #e67e22;">
+                        <div style="font-size:12px; color:#7f8c8d; font-weight:600;">INDUSTRIAL</div>
+                        <div id="ledger-stat-ind" style="font-size:22px; font-weight:bold; color:#e67e22;">0</div>
+                    </div>
+                    <div class="card" style="flex:1; min-width:140px; text-align:center; border-top:4px solid #9b59b6;">
+                        <div style="font-size:12px; color:#7f8c8d; font-weight:600;">SS DEALERS</div>
+                        <div id="ledger-stat-ss" style="font-size:22px; font-weight:bold; color:#9b59b6;">0</div>
+                    </div>
+                    <div class="card" style="flex:1; min-width:140px; text-align:center; border-top:4px solid #27ae60;">
+                        <div style="font-size:12px; color:#7f8c8d; font-weight:600;">OE</div>
+                        <div id="ledger-stat-oe" style="font-size:22px; font-weight:bold; color:#27ae60;">0</div>
+                    </div>
+                    <div class="card" style="flex:1; min-width:140px; text-align:center; border-top:4px solid #95a5a6;">
+                        <div style="font-size:12px; color:#7f8c8d; font-weight:600;">TOTAL</div>
+                        <div id="ledger-stat-total" style="font-size:22px; font-weight:bold; color:#2c3e50;">0</div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="data-table" id="ledgers-table">
+                        <thead style="background:#eaf4ff; color:#2c3e50;">
+                            <tr>
+                                <th>S.No</th>
+                                <th>Ledger Name</th>
+                                <th>Category</th>
+                                <th>Sector Type</th>
+                                <th>GSTIN</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ledgers-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
             <section id="upload" class="tab-content">
                 <h2>Upload Bank Statement OR MIS Excel</h2>
                 <div class="card" style="max-width: 500px; margin-top: 20px;">
