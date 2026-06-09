@@ -182,21 +182,24 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
             const bulkLedgerOps = [];
             let currentCategory = 'UNCATEGORIZED';
 
-            // Category headers in the Excel — all-caps rows with no sub-data
-            const CATEGORY_KEYWORDS = ['AUTO SECTOR', 'INDUSTRIAL', 'SS DEALER', 'OE', 'BAJAJ', 'GABRIEL'];
-
             rawArray.forEach((row) => {
                 const firstVal = (row[0] || '').toString().trim();
                 if (!firstVal) return;
 
-                // Check if this row is a category header (all caps, no extra columns)
-                const allCols = row.filter(v => v !== null && v !== undefined && v !== '');
-                const isHeader = allCols.length === 1 && firstVal === firstVal.toUpperCase() && firstVal.length > 3;
+                // SMART HEADER DETECTION: All caps, no 'LTD'/'PVT', and column B is empty
+                const isHeader = firstVal === firstVal.toUpperCase() && 
+                                 firstVal.length > 3 && 
+                                 !firstVal.includes('LTD') && 
+                                 !firstVal.includes('PVT') &&
+                                 (row[1] || '').toString().trim() === '';
 
                 if (isHeader) {
                     currentCategory = firstVal;
-                    return;
+                    return; // Skip saving the header row
                 }
+
+                // Skip pure title rows from the CSV
+                if (firstVal.toLowerCase() === 'ledger name' || firstVal.toLowerCase() === 'list of ledgers') return;
 
                 // Determine sub-category type from category header
                 let sectorType = 'Other';

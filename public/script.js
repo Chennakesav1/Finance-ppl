@@ -82,17 +82,15 @@ function autoCalculatePurchase() {
 }
 
 function getExportHTML() {
-    // 1. Get the raw date in YYYY-MM-DD format
     const rawDate = document.getElementById('date-selector').value || new Date().toISOString().split('T')[0];
-    
-    // 2. Split it and rearrange it to DD-MM-YYYY
     const [year, month, day] = rawDate.split('-');
     const formattedDate = `${day}-${month}-${year}`;
 
-    const sales = document.getElementById('sales-summary-table').outerHTML;
-    const purchases = document.getElementById('purchase-summary-table').outerHTML;
-    const payments = document.getElementById('payments-summary-table').outerHTML;
-    const collections = document.getElementById('collections-summary-table').outerHTML;
+    // Replace the opening table tags to inject height: 100% dynamically
+    const sales = document.getElementById('sales-summary-table').outerHTML.replace('<table class="data-table"', '<table class="data-table" style="height: 100%; display: flex; flex-direction: column;"');
+    const purchases = document.getElementById('purchase-summary-table').outerHTML.replace('<table class="data-table"', '<table class="data-table" style="height: 100%; display: flex; flex-direction: column;"');
+    const payments = document.getElementById('payments-summary-table').outerHTML.replace('<table class="data-table"', '<table class="data-table" style="height: 100%; display: flex; flex-direction: column;"');
+    const collections = document.getElementById('collections-summary-table').outerHTML.replace('<table class="data-table"', '<table class="data-table" style="height: 100%; display: flex; flex-direction: column;"');
 
     return `
     <div style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; color: #2c3e50; padding: 0; width: 100%; box-sizing: border-box;">
@@ -100,13 +98,11 @@ function getExportHTML() {
         <table style="width: 100%; margin-bottom: 8px; border-collapse: collapse; border: none;">
             <tr>
                 <td style="width: 80px; border: none;"></td> 
-                
                 <td style="text-align: center; vertical-align: middle; border: none;">
                     <h2 style="color: #2c3e50; margin: 0; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
                         FINANCE MIS (${formattedDate})
                     </h2>
                 </td>
-                
                 <td style="text-align: right; vertical-align: middle; border: none; width: 80px;">
                     <img src="logo.png" alt="Precifast Logo" style="height: 35px; object-fit: contain;" />
                 </td>
@@ -115,28 +111,27 @@ function getExportHTML() {
         
         <div style="width: 100%; height: 2px; background-color: #bdc3c7; margin: 0 0 15px 0;"></div>
         
-        <table style="width: 100%; border-collapse: separate; border-spacing: 15px 12px; border: none; table-layout: fixed;">
-            <tr>
-                <td style="width: 48%; vertical-align: top; border: none; padding: 0; overflow: hidden;">
-                    <h3 style="color: #2980b9; margin: 0 0 5px 0; font-size: 20px; border-bottom: 2px solid #3498db; padding-bottom: 2px; display: inline-block;">Sales Summary</h3>
-                    ${sales}
-                </td>
-                <td style="width: 48%; vertical-align: top; border: none; padding: 0; overflow: hidden;">
-                    <h3 style="color: #d35400; margin: 0 0 5px 0; font-size: 20px; border-bottom: 2px solid #e67e22; padding-bottom: 2px; display: inline-block;">Purchases Summary</h3>
-                    ${purchases}
-                </td>
-            </tr>
-            <tr>
-                <td style="width: 48%; vertical-align: top; border: none; padding: 0; overflow: hidden;">
-                    <h3 style="color: #8e44ad; margin: 0 0 5px 0; font-size: 20px; border-bottom: 2px solid #9b59b6; padding-bottom: 2px; display: inline-block;">Payments Summary</h3>
-                    ${payments}
-                </td>
-                <td style="width: 48%; vertical-align: top; border: none; padding: 0; overflow: hidden;">
-                    <h3 style="color: #27ae60; margin: 0 0 5px 0; font-size: 20px; border-bottom: 2px solid #2ecc71; padding-bottom: 2px; display: inline-block;">Collections Summary</h3>
-                    ${collections}
-                </td>
-            </tr>
-        </table>
+        <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items: stretch;">
+            <div style="flex: 1; display: flex; flex-direction: column;">
+                <h3 style="color: #2980b9; margin: 0 0 5px 0; font-size: 16px; border-bottom: 2px solid #3498db; padding-bottom: 2px;">Sales Summary</h3>
+                ${sales}
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column;">
+                <h3 style="color: #d35400; margin: 0 0 5px 0; font-size: 16px; border-bottom: 2px solid #e67e22; padding-bottom: 2px;">Purchases Summary</h3>
+                ${purchases}
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px; align-items: stretch;">
+            <div style="flex: 1; display: flex; flex-direction: column;">
+                <h3 style="color: #8e44ad; margin: 0 0 5px 0; font-size: 16px; border-bottom: 2px solid #9b59b6; padding-bottom: 2px;">Payments Summary</h3>
+                ${payments}
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column;">
+                <h3 style="color: #27ae60; margin: 0 0 5px 0; font-size: 16px; border-bottom: 2px solid #2ecc71; padding-bottom: 2px;">Collections Summary</h3>
+                ${collections}
+            </div>
+        </div>
     </div>
     `;
 }

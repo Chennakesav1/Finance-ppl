@@ -52,3 +52,5 @@ input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
 /* Delete button in tables */
 .btn-danger { background: #e74c3c; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
 .btn-danger:hover { background: #c0392b; }
+table.data-table tbody { flex-grow: 1; }
+        table.data-table tfoot { margin-top: auto; }
