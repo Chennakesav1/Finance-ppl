@@ -512,13 +512,35 @@ function renderLedgersTable(data) {
     document.getElementById('ledger-stat-total').innerText = data.length;
 
     const sectorColors = { Auto: '#3498db', Industrial: '#e67e22', SS: '#9b59b6', OE: '#27ae60', Other: '#95a5a6' };
+    
+    // Dropdown options
+    const catOptions = ["AUTO SECTOR CUSTOMERS", "INDUSTRIAL CUSTOMERS", "SS DEALERS", "OE - BAJAJ", "OE - GABRIEL INDIA LIMITED", "OTHER"];
+    const secOptions = ["Auto", "Industrial", "SS", "OE", "Other"];
+
     document.getElementById('ledgers-body').innerHTML = data.map((l, i) => {
         const color = sectorColors[l.sectorType] || '#95a5a6';
+        
+        // Build the dynamic HTML for the select menus
+        const catHtml = catOptions.map(c => `<option value="${c}" ${l.category === c ? 'selected' : ''}>${c}</option>`).join('');
+        const secHtml = secOptions.map(s => `<option value="${s}" ${l.sectorType === s ? 'selected' : ''}>${s}</option>`).join('');
+
         return `<tr>
             <td><strong>${i + 1}</strong></td>
             <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${l._id}', 'ledgerName', 'Ledger', this)">${l.ledgerName || ''}</td>
-            <td>${l.category || ''}</td>
-            <td><span style="background:${color}22; color:${color}; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:600;">${l.sectorType || ''}</span></td>
+            
+            <td>
+                <select onchange="dropdownChange('${l._id}', 'category', 'Ledger', this)" style="padding:4px; border:1px solid transparent; background:transparent; cursor:pointer; width:100%; font-family: inherit;">
+                    <option value="" disabled>Select...</option>
+                    ${catHtml}
+                </select>
+            </td>
+            
+            <td>
+                <select onchange="dropdownChange('${l._id}', 'sectorType', 'Ledger', this)" style="padding:4px 8px; border:1px solid ${color}44; background:${color}11; color:${color}; border-radius:12px; font-size:12px; font-weight:600; cursor:pointer; outline:none; text-align:center;">
+                    ${secHtml}
+                </select>
+            </td>
+            
             <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${l._id}', 'gstin', 'Ledger', this)">${l.gstin || ''}</td>
             <td><button onclick="deleteLedger('${l._id}')" style="background:#e74c3c; color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:12px;"><i class="fas fa-trash"></i></button></td>
         </tr>`;
@@ -582,3 +604,44 @@ function exportLedgers() {
 }
 
 document.addEventListener('DOMContentLoaded', () => { document.getElementById('date-selector').value = ''; loadFinanceData(); loadSundryLedgers(); });
+
+function dropdownChange(id, field, type, selectElement) {
+    if (confirm(`Are you sure you want to update this ${field}?`)) {
+        const newValue = selectElement.value;
+        
+        // AUTO-SYNC LOGIC: If changing Sector, automatically update the Category too
+        if (field === 'sectorType') {
+            let linkedCategory = 'OTHER';
+            if (newValue === 'Auto') linkedCategory = 'AUTO SECTOR CUSTOMERS';
+            if (newValue === 'Industrial') linkedCategory = 'INDUSTRIAL CUSTOMERS';
+            if (newValue === 'SS') linkedCategory = 'SS DEALERS';
+            if (newValue === 'OE') linkedCategory = 'OE - BAJAJ';
+            
+            // Send the linked category update in the background
+            fetch(`${API_BASE}/api/finance/update-record/${type}/${id}`, { 
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ field: 'category', value: linkedCategory }) 
+            });
+        }
+
+        // Send the main dropdown update
+        fetch(`${API_BASE}/api/finance/update-record/${type}/${id}`, { 
+            method: 'PUT', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ field: field, value: newValue }) 
+        })
+        .then(res => res.json())
+        .then(data => { 
+            showToast("✅ Updated Successfully"); 
+            loadSundryLedgers(); // Refresh table to show changes
+        })
+        .catch(err => { 
+            showToast("❌ Failed to update.", true); 
+            loadSundryLedgers(); 
+        });
+    } else {
+        // Reset dropdown if user clicks cancel
+        loadSundryLedgers(); 
+    }
+}
