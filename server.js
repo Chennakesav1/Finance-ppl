@@ -167,7 +167,7 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
             if (bulkPurchaseOps.length > 0) await Payable.bulkWrite(bulkPurchaseOps);
         }
 
-        // 4. SUNDRY LEDGERS — detect "List of Ledgers" sheet OR any sheet with ledger-like structure
+        // 4. SUNDRY LEDGERS
         let sundrySheetName = null;
         for (let sheetName of workbook.SheetNames) {
             const clean = sheetName.replace(/\s/g, '').toLowerCase();
@@ -186,7 +186,6 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
                 const firstVal = (row[0] || '').toString().trim();
                 if (!firstVal) return;
 
-                // SMART HEADER DETECTION: All caps, no 'LTD'/'PVT', and column B is empty
                 const isHeader = firstVal === firstVal.toUpperCase() && 
                                  firstVal.length > 3 && 
                                  !firstVal.includes('LTD') && 
@@ -195,13 +194,11 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
 
                 if (isHeader) {
                     currentCategory = firstVal;
-                    return; // Skip saving the header row
+                    return; 
                 }
 
-                // Skip pure title rows from the CSV
                 if (firstVal.toLowerCase() === 'ledger name' || firstVal.toLowerCase() === 'list of ledgers') return;
 
-                // Determine sub-category type from category header
                 let sectorType = 'Other';
                 const catUpper = currentCategory.toUpperCase();
                 if (catUpper.includes('AUTO')) sectorType = 'Auto';
@@ -253,7 +250,7 @@ app.delete('/api/finance/sundry-ledger/:id', async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Failed to delete ledger" }); }
 });
 
-// ─── MAIN DATA API ────────────────────────────────────────────────────────────
+// ─── MAIN DATA API (UPDATED WITH SMART DATA MATCHING) ─────────────────────────
 
 app.get('/api/finance/all-data', async (req, res) => {
     try {
@@ -281,53 +278,71 @@ app.get('/api/finance/all-data', async (req, res) => {
         const payables = await Payable.find({}).sort({ matRecDate: -1 });
         const bankTransactions = await BankTransaction.find({}).sort({ transactionDate: -1 });
 
-        // Load all ledgers to resolve OE sub-categories (Bajaj / Gabriel)
+        // Load all ledgers to perform smart auto-categorization
         const allLedgers = await SundryLedger.find({});
-        const bajajLedgerNames = allLedgers
-            .filter(l => l.category && l.category.toUpperCase().includes('BAJAJ'))
-            .map(l => l.ledgerName.toUpperCase());
-        const gabrielLedgerNames = allLedgers
-            .filter(l => l.category && l.category.toUpperCase().includes('GABRIEL'))
-            .map(l => l.ledgerName.toUpperCase());
-
-        // Standard marketier-based aggregation
-        const salesAnalysis = await Invoice.aggregate([
-            { $match: matchMTDSales },
-            { $group: { _id: '$marketier', mtd: { $sum: '$invoiceValue' }, today: { $sum: { $cond: [ { $and: [ { $gte: ['$invoiceDate', startOfDay] }, { $lte: ['$invoiceDate', endOfDay] } ] }, '$invoiceValue', 0 ] } } } }
-        ]);
-
-        // OE sub-breakdown: Bajaj vs Gabriel vs Other OE
-        const oeInvoices = await Invoice.find({ ...matchMTDSales, $expr: { $eq: [{ $toUpper: '$marketier' }, 'OE'] } });
-        const oeSubAnalysis = { BAJAJ: { today: 0, mtd: 0 }, 'GABRIEL INDIA LIMITED': { today: 0, mtd: 0 }, 'OTHER OE': { today: 0, mtd: 0 } };
-        oeInvoices.forEach(inv => {
-            const custUpper = (inv.customer || '').toUpperCase();
-            const isToday = inv.invoiceDate >= startOfDay && inv.invoiceDate <= endOfDay;
-            let bucket = 'OTHER OE';
-            if (bajajLedgerNames.some(n => custUpper.includes(n) || n.includes(custUpper)) || custUpper.includes('BAJAJ')) bucket = 'BAJAJ';
-            else if (gabrielLedgerNames.some(n => custUpper.includes(n) || n.includes(custUpper)) || custUpper.includes('GABRIEL')) bucket = 'GABRIEL INDIA LIMITED';
-            oeSubAnalysis[bucket].mtd += inv.invoiceValue || 0;
-            if (isToday) oeSubAnalysis[bucket].today += inv.invoiceValue || 0;
-        });
-
-        // Retails sub-breakdown: Auto vs Industrial vs SS
-        const retailInvoices = await Invoice.find({ ...matchMTDSales, $expr: { $eq: [{ $toUpper: '$marketier' }, 'RETAILS'] } });
+        
+        const bajajLedgerNames = allLedgers.filter(l => l.category && l.category.toUpperCase().includes('BAJAJ')).map(l => l.ledgerName.toUpperCase());
+        const gabrielLedgerNames = allLedgers.filter(l => l.category && l.category.toUpperCase().includes('GABRIEL')).map(l => l.ledgerName.toUpperCase());
         const autoLedgerNames = allLedgers.filter(l => l.sectorType === 'Auto').map(l => l.ledgerName.toUpperCase());
         const industrialLedgerNames = allLedgers.filter(l => l.sectorType === 'Industrial').map(l => l.ledgerName.toUpperCase());
         const ssLedgerNames = allLedgers.filter(l => l.sectorType === 'SS').map(l => l.ledgerName.toUpperCase());
 
+        // We fetch all MTD Sales and dynamically categorize them to fix empty/wrong Excel remarks
+        const allMTDSales = await Invoice.find(matchMTDSales);
+        
+        const salesMap = {};
+        const oeSubAnalysis = { BAJAJ: { today: 0, mtd: 0 }, 'GABRIEL INDIA LIMITED': { today: 0, mtd: 0 }, 'OTHER OE': { today: 0, mtd: 0 } };
         const retailSubAnalysis = { AUTO: { today: 0, mtd: 0 }, INDUSTRIAL: { today: 0, mtd: 0 }, SS: { today: 0, mtd: 0 } };
-        retailInvoices.forEach(inv => {
+
+        allMTDSales.forEach(inv => {
             const custUpper = (inv.customer || '').toUpperCase();
+            let markUpper = (inv.marketier || '').toUpperCase();
             const isToday = inv.invoiceDate >= startOfDay && inv.invoiceDate <= endOfDay;
-            let bucket = null;
-            if (autoLedgerNames.some(n => custUpper === n || custUpper.includes(n) || n.includes(custUpper))) bucket = 'AUTO';
-            else if (industrialLedgerNames.some(n => custUpper === n || custUpper.includes(n) || n.includes(custUpper))) bucket = 'INDUSTRIAL';
-            else if (ssLedgerNames.some(n => custUpper === n || custUpper.includes(n) || n.includes(custUpper))) bucket = 'SS';
-            if (bucket) {
-                retailSubAnalysis[bucket].mtd += inv.invoiceValue || 0;
-                if (isToday) retailSubAnalysis[bucket].today += inv.invoiceValue || 0;
+            const val = inv.invoiceValue || 0;
+
+            // SMART MATCHING: Check customer against ledgers to override empty/wrong categories
+            let isAuto = autoLedgerNames.some(n => custUpper === n || custUpper.includes(n) || n.includes(custUpper));
+            let isInd = industrialLedgerNames.some(n => custUpper === n || custUpper.includes(n) || n.includes(custUpper));
+            let isSS = ssLedgerNames.some(n => custUpper === n || custUpper.includes(n) || n.includes(custUpper));
+            let isBajaj = bajajLedgerNames.some(n => custUpper.includes(n) || n.includes(custUpper)) || custUpper.includes('BAJAJ');
+            let isGabriel = gabrielLedgerNames.some(n => custUpper.includes(n) || n.includes(custUpper)) || custUpper.includes('GABRIEL');
+
+            // Force the Main Category based on ledger match
+            if (isAuto || isInd) markUpper = 'RETAILS';
+            else if (isSS) markUpper = 'SS DEALERS';
+            else if (isBajaj || isGabriel) markUpper = 'OE';
+            
+            if (!markUpper) markUpper = 'UNCATEGORIZED';
+
+            // 1. Build Main Dashboard Analysis
+            if (!salesMap[markUpper]) salesMap[markUpper] = { _id: markUpper, mtd: 0, today: 0 };
+            salesMap[markUpper].mtd += val;
+            if (isToday) salesMap[markUpper].today += val;
+
+            // 2. Build Sub Analysis Rows (e.g., ↳ Industrial)
+            if (isBajaj) {
+                oeSubAnalysis['BAJAJ'].mtd += val;
+                if (isToday) oeSubAnalysis['BAJAJ'].today += val;
+            } else if (isGabriel) {
+                oeSubAnalysis['GABRIEL INDIA LIMITED'].mtd += val;
+                if (isToday) oeSubAnalysis['GABRIEL INDIA LIMITED'].today += val;
+            } else if (markUpper === 'OE') {
+                oeSubAnalysis['OTHER OE'].mtd += val;
+                if (isToday) oeSubAnalysis['OTHER OE'].today += val;
+            } else if (isAuto) {
+                retailSubAnalysis['AUTO'].mtd += val;
+                if (isToday) retailSubAnalysis['AUTO'].today += val;
+            } else if (isInd) {
+                retailSubAnalysis['INDUSTRIAL'].mtd += val;
+                if (isToday) retailSubAnalysis['INDUSTRIAL'].today += val;
+            } else if (isSS) {
+                retailSubAnalysis['SS'].mtd += val;
+                if (isToday) retailSubAnalysis['SS'].today += val;
             }
         });
+
+        // Convert the map to an array for the frontend
+        const salesAnalysis = Object.values(salesMap);
 
         const purchaseAnalysis = await Payable.aggregate([
             { $match: matchMTDPurchase },
