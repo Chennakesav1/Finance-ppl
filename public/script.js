@@ -296,15 +296,23 @@ async function loadFinanceData() {
             <td>₹${gabrielM.toLocaleString('en-IN')}</td>
         </tr>`;
 
-        // ── RETAILS ROW (main) ─────────────────────────────────────────────────
+        // ── RETAILS ROW (main + merged SS Dealers) ─────────────────────────────
         const rRow = analysis.salesAnalysis.find(r => matchCategory('RETAILS', r._id)) || { today: 0, mtd: 0 };
-        const rToday = Math.round(rRow.today), rMtd = Math.round(rRow.mtd);
-        sTodayTotal += rToday; sMtdTotal += rMtd;
+        const ssRow = analysis.salesAnalysis.find(r => matchCategory('SS DEALERS', r._id)) || { today: 0, mtd: 0 };
+
+        // 1. Combine Retails and SS Dealers for the main Retails total
+        const rToday = Math.round(rRow.today) + Math.round(ssRow.today);
+        const rMtd = Math.round(rRow.mtd) + Math.round(ssRow.mtd);
+        
+        sTodayTotal += rToday; 
+        sMtdTotal += rMtd;
+
         salesRows += `<tr style="font-weight:600; background:#f0fff4;">
             <td>Retails</td>
             <td>₹${rToday.toLocaleString('en-IN')}</td>
             <td>₹${rMtd.toLocaleString('en-IN')}</td>
         </tr>`;
+
         // Retails sub-rows: Auto
         const autoT = Math.round(retailSubAnalysis['AUTO']?.today || 0);
         const autoM = Math.round(retailSubAnalysis['AUTO']?.mtd || 0);
@@ -313,6 +321,7 @@ async function loadFinanceData() {
             <td>₹${autoT.toLocaleString('en-IN')}</td>
             <td>₹${autoM.toLocaleString('en-IN')}</td>
         </tr>`;
+
         // Retails sub-rows: Industrial
         const indT = Math.round(retailSubAnalysis['INDUSTRIAL']?.today || 0);
         const indM = Math.round(retailSubAnalysis['INDUSTRIAL']?.mtd || 0);
@@ -321,23 +330,14 @@ async function loadFinanceData() {
             <td>₹${indT.toLocaleString('en-IN')}</td>
             <td>₹${indM.toLocaleString('en-IN')}</td>
         </tr>`;
-        // Retails sub-rows: SS
-        const ssRetT = Math.round(retailSubAnalysis['SS']?.today || 0);
-        const ssRetM = Math.round(retailSubAnalysis['SS']?.mtd || 0);
+
+        // 2. Retails sub-rows: SS (Merge existing SS and SS Dealers amounts here)
+        const ssRetT = Math.round(retailSubAnalysis['SS']?.today || 0) + Math.round(ssRow.today);
+        const ssRetM = Math.round(retailSubAnalysis['SS']?.mtd || 0) + Math.round(ssRow.mtd);
         salesRows += `<tr style="background:#f5fff8; color:#555; font-size:12px;">
             <td style="padding-left:28px;">↳ SS</td>
             <td>₹${ssRetT.toLocaleString('en-IN')}</td>
             <td>₹${ssRetM.toLocaleString('en-IN')}</td>
-        </tr>`;
-
-        // ── SS DEALERS ROW ─────────────────────────────────────────────────────
-        const ssRow = analysis.salesAnalysis.find(r => matchCategory('SS DEALERS', r._id)) || { today: 0, mtd: 0 };
-        const ssDToday = Math.round(ssRow.today), ssDMtd = Math.round(ssRow.mtd);
-        sTodayTotal += ssDToday; sMtdTotal += ssDMtd;
-        salesRows += `<tr style="font-weight:600;">
-            <td>SS Dealers</td>
-            <td>₹${ssDToday.toLocaleString('en-IN')}</td>
-            <td>₹${ssDMtd.toLocaleString('en-IN')}</td>
         </tr>`;
 
         document.querySelector('#sales-summary-table tbody').innerHTML = salesRows;
