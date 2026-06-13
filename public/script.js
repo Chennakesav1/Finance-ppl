@@ -339,6 +339,20 @@ async function loadFinanceData() {
             <td>₹${ssRetT.toLocaleString('en-IN')}</td>
             <td>₹${ssRetM.toLocaleString('en-IN')}</td>
         </tr>`;
+        // 3. UNCATEGORIZED ROW (Catches any missing data)
+        const uncategorizedRow = analysis.salesAnalysis.find(r => r._id === 'UNCATEGORIZED') || { today: 0, mtd: 0 };
+        const uncToday = Math.round(uncategorizedRow.today);
+        const uncMtd = Math.round(uncategorizedRow.mtd);
+        
+        if (uncToday > 0 || uncMtd > 0) {
+            sTodayTotal += uncToday;
+            sMtdTotal += uncMtd;
+            salesRows += `<tr style="font-weight:600; background:#fff3cd; color:#856404;">
+                <td>Uncategorized / Other</td>
+                <td>₹${uncToday.toLocaleString('en-IN')}</td>
+                <td>₹${uncMtd.toLocaleString('en-IN')}</td>
+            </tr>`;
+        }
 
         document.querySelector('#sales-summary-table tbody').innerHTML = salesRows;
         document.getElementById('s-today-total').innerText = `₹${sTodayTotal.toLocaleString('en-IN')}`;

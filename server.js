@@ -50,6 +50,12 @@ const getVal = (row, searchStrs) => {
     const keys = Object.keys(row);
     for (let search of searchStrs) {
         const cleanSearch = search.replace(/[^a-z0-9]/gi, '').toLowerCase();
+        
+        // Phase 1: Try EXACT match first (prevents grabbing "Debit Balance" instead of "Debit")
+        const exactKey = keys.find(k => k.replace(/[^a-z0-9]/gi, '').toLowerCase() === cleanSearch);
+        if (exactKey && row[exactKey] !== undefined && row[exactKey] !== '') return row[exactKey];
+
+        // Phase 2: Fallback to INCLUDES
         const foundKey = keys.find(k => k.replace(/[^a-z0-9]/gi, '').toLowerCase().includes(cleanSearch));
         if (foundKey && row[foundKey] !== undefined && row[foundKey] !== '') return row[foundKey];
     }
@@ -119,7 +125,7 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
                     } else if (!customerName) { customerName = r['__EMPTY'] || r['__EMPTY_1']; }
                     const invNo = getVal(r, ['vchno', 'invoiceno']);
                     if (!invNo) return; 
-                    let invoiceValue = parseFloat(getVal(r, ['credit'])) || parseFloat(getVal(r, ['debit'])) || parseFloat(getVal(r, ['invoicevalue'])) || 0;
+                    let invoiceValue = parseFloat(getVal(r, ['debit'])) || parseFloat(getVal(r, ['credit'])) || parseFloat(getVal(r, ['invoicevalue'])) || 0;
                     const doc = {
                         invoiceNo: invNo, invoiceDate: parseExcelDate(getVal(r, ['date', 'invoicedate'])),
                         customer: customerName, invoiceValue: invoiceValue, marketier: getVal(r, ['remakrs', 'remarks', 'marketier'])
