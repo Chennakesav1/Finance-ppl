@@ -152,12 +152,12 @@ const exportCSS = `
             font-size: 8.5px; 
             font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
             border: 1px solid #dce1e6;
-            height: 215px; /* 📏 CRITICAL FIX: Forces ALL 4 tables to be the exact same height! */
+            height: 215px; 
         }
         
         th, td { 
             border: 1px solid #dce1e6; 
-            padding: 4px 4px; /* Tightened so the fixed height breathes perfectly */
+            padding: 4px 4px; 
             word-wrap: break-word; 
             overflow-wrap: break-word;
             vertical-align: middle;
@@ -179,24 +179,23 @@ const exportCSS = `
 
         table.data-table tr:nth-child(even) td { background-color: #f9fbfd !important; }
         
-        /* ⬆️ FIX: Match sub-item font size to normal names */
         table.data-table td[style*="padding-left"] { 
             color: #333 !important; 
-            font-size: 8.5px !important; /* Matches main table font size exactly */
-            font-style: normal !important; /* Removes italics so it looks like regular names */
+            font-size: 8.5px !important; 
+            font-style: normal !important; 
             font-weight: 500;
         }
 
+        /* 🔥 STRICT GRAND TOTAL RULES 🔥 */
         table.data-table tfoot th,
-        table.data-table tfoot td,
-        table.data-table tr:last-child td,
-        table.data-table tr:last-child th {
+        table.data-table tfoot td {
             font-weight: 900 !important;
             background-color: #eef2f5 !important;
             border-top: 1.5px solid #bdc3c7 !important;
-            color: #2c3e50 !important;
+            color: #1a252f !important; 
             white-space: nowrap !important; 
-            font-size: 9px !important; 
+            font-size: 10.5px !important; 
+            text-transform: uppercase !important; 
         }
     </style>
 `;
@@ -358,6 +357,7 @@ async function loadFinanceData() {
 
         
         // 3. UNCATEGORIZED ROW (Catches any missing data so Grand Total is correct)
+        // 3. UNCATEGORIZED ROW (Catches any missing data so Grand Total is correct)
         const uncategorizedRow = analysis.salesAnalysis.find(r => r._id === 'UNCATEGORIZED') || { today: 0, mtd: 0 };
         const uncToday = Math.round(uncategorizedRow.today);
         const uncMtd = Math.round(uncategorizedRow.mtd);
@@ -372,13 +372,10 @@ async function loadFinanceData() {
             </tr>`;
         }
 
-        document.querySelector('#sales-summary-table tbody').innerHTML = salesRows;
-        document.getElementById('s-today-total').innerText = `₹${sTodayTotal.toLocaleString('en-IN')}`;
-        document.getElementById('s-mtd-total').innerText = `₹${sMtdTotal.toLocaleString('en-IN')}`;
-
+        // --- PURCHASES ---
         const purCats = ['CONSUMABLES', 'LOGISTICS', 'MAINTANANCE', 'OUTSOURCING', 'PACKING CONSU.', 'RM', 'TOOLS'];
         let pTodayTotal = 0, pMtdTotal = 0;
-        document.querySelector('#purchase-summary-table tbody').innerHTML = purCats.map(cat => {
+        let purHtml = purCats.map(cat => {
             const row = analysis.purchaseAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
             const roundedToday = Math.round(row.today);
             const roundedMtd = Math.round(row.mtd);
@@ -386,12 +383,27 @@ async function loadFinanceData() {
             pMtdTotal += roundedMtd;
             return `<tr><td>${cat}</td><td>₹${roundedToday.toLocaleString('en-IN')}</td><td>₹${roundedMtd.toLocaleString('en-IN')}</td></tr>`;
         }).join('');
+
+        // ⚖️ BALANCE SALES & PURCHASES ROWS
+        let salesCount = (salesRows.match(/<tr/g) || []).length;
+        let purCount = (purHtml.match(/<tr/g) || []).length;
+        let max1 = Math.max(salesCount, purCount);
+        while (salesCount < max1) { salesRows += `<tr><td style="color:transparent;">.</td><td></td><td></td></tr>`; salesCount++; }
+        while (purCount < max1) { purHtml += `<tr><td style="color:transparent;">.</td><td></td><td></td></tr>`; purCount++; }
+
+        document.querySelector('#sales-summary-table tbody').innerHTML = salesRows;
+        document.getElementById('s-today-total').innerText = `₹${sTodayTotal.toLocaleString('en-IN')}`;
+        document.getElementById('s-mtd-total').innerText = `₹${sMtdTotal.toLocaleString('en-IN')}`;
+
+        document.querySelector('#purchase-summary-table tbody').innerHTML = purHtml;
         document.getElementById('p-today-total').innerText = `₹${pTodayTotal.toLocaleString('en-IN')}`;
         document.getElementById('p-mtd-total').innerText = `₹${pMtdTotal.toLocaleString('en-IN')}`;
 
+
+        // --- PAYMENTS ---
         const payCats = ['RM', 'STATUTORY', 'TOOLS /CONSU/R&M', 'SUNDRY EXP', 'FREIGHT', 'GCD', 'USL', 'OTHERS'];
         let payTodayTotal = 0, payMtdTotal = 0;
-        document.querySelector('#payments-summary-table tbody').innerHTML = payCats.map(cat => {
+        let payHtml = payCats.map(cat => {
             const row = analysis.paymentAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
             const roundedToday = Math.round(row.today);
             const roundedMtd = Math.round(row.mtd);
@@ -399,12 +411,11 @@ async function loadFinanceData() {
             payMtdTotal += roundedMtd;
             return `<tr><td>${cat}</td><td>₹${roundedToday.toLocaleString('en-IN')}</td><td>₹${roundedMtd.toLocaleString('en-IN')}</td></tr>`;
         }).join('');
-        document.getElementById('pay-today-total').innerText = `₹${payTodayTotal.toLocaleString('en-IN')}`;
-        document.getElementById('pay-mtd-total').innerText = `₹${payMtdTotal.toLocaleString('en-IN')}`;
 
+        // --- COLLECTIONS ---
         const colCats = ['OE', 'RETAILS', 'OTHER INCOME', 'SECURITY DEPOSITS', 'USL', 'BANK INTEREST'];
         let colTodayTotal = 0, colMtdTotal = 0;
-        document.querySelector('#collections-summary-table tbody').innerHTML = colCats.map(cat => {
+        let colHtml = colCats.map(cat => {
             const row = analysis.collectionAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
             const roundedToday = Math.round(row.today);
             const roundedMtd = Math.round(row.mtd);
@@ -412,6 +423,19 @@ async function loadFinanceData() {
             colMtdTotal += roundedMtd;
             return `<tr><td>${cat}</td><td>₹${roundedToday.toLocaleString('en-IN')}</td><td>₹${roundedMtd.toLocaleString('en-IN')}</td></tr>`;
         }).join('');
+
+        // ⚖️ BALANCE PAYMENTS & COLLECTIONS ROWS (Forces Grand Totals to align perfectly)
+        let payCount = (payHtml.match(/<tr/g) || []).length;
+        let colCount = (colHtml.match(/<tr/g) || []).length;
+        let max2 = Math.max(payCount, colCount);
+        while (payCount < max2) { payHtml += `<tr><td style="color:transparent;">.</td><td></td><td></td></tr>`; payCount++; }
+        while (colCount < max2) { colHtml += `<tr><td style="color:transparent;">.</td><td></td><td></td></tr>`; colCount++; }
+
+        document.querySelector('#payments-summary-table tbody').innerHTML = payHtml;
+        document.getElementById('pay-today-total').innerText = `₹${payTodayTotal.toLocaleString('en-IN')}`;
+        document.getElementById('pay-mtd-total').innerText = `₹${payMtdTotal.toLocaleString('en-IN')}`;
+
+        document.querySelector('#collections-summary-table tbody').innerHTML = colHtml;
         document.getElementById('col-today-total').innerText = `₹${colTodayTotal.toLocaleString('en-IN')}`;
         document.getElementById('col-mtd-total').innerText = `₹${colMtdTotal.toLocaleString('en-IN')}`;
 
