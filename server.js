@@ -61,7 +61,14 @@ const getVal = (row, searchStrs) => {
     }
     return undefined;
 };
-
+// Add this right below your getVal function in server.js
+const parseAmount = (val) => {
+    if (val === undefined || val === null || val === '') return 0;
+    if (typeof val === 'number') return val;
+    // Strip commas and spaces out of the string before parsing
+    const parsed = parseFloat(String(val).replace(/,/g, '').trim());
+    return isNaN(parsed) ? 0 : parsed;
+};
 const getSheetName = (workbook, targetName) => workbook.SheetNames.find(s => s.replace(/\s/g, '').toLowerCase() === targetName.toLowerCase());
 
 app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) => {
@@ -125,18 +132,18 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
                     } else if (!customerName) { customerName = r['__EMPTY'] || r['__EMPTY_1']; }
                     const invNo = getVal(r, ['vchno', 'invoiceno']);
                     if (!invNo) return; 
-                    const debitAmount = parseFloat(getVal(r, ['debit'])) || 0;
-                    const creditAmount = parseFloat(getVal(r, ['credit'])) || 0;
+                    // Replace the old debit/credit variables with this:
+                    const debitAmount = parseAmount(getVal(r, ['debit', 'debitamount', 'dr']));
+                    const creditAmount = parseAmount(getVal(r, ['credit', 'creditamount', 'cr']));
 
-                    // Keep invoiceValue for your Summary Dashboard math, prioritizing the Debit value
                     const invoiceValue = debitAmount > 0 ? debitAmount : creditAmount;
 
                     const doc = {
                         invoiceNo: invNo,
                         invoiceDate: parseExcelDate(getVal(r, ['date', 'invoicedate'])),
                         customer: customerName,
-                        debit: debitAmount,     // Saving Debit separately
-                        credit: creditAmount,   // Saving Credit separately
+                        debit: debitAmount,
+                        credit: creditAmount,
                         invoiceValue: invoiceValue,
                         marketier: getVal(r, ['remakrs', 'remarks', 'marketier'])
                     };
