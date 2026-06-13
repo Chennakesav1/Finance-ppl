@@ -86,53 +86,53 @@ function getExportHTML() {
     const [year, month, day] = rawDate.split('-');
     const formattedDate = `${day}-${month}-${year}`;
 
-    // Pure HTML - No flexbox hacks on tables!
     const sales = document.getElementById('sales-summary-table').outerHTML;
     const purchases = document.getElementById('purchase-summary-table').outerHTML;
     const payments = document.getElementById('payments-summary-table').outerHTML;
     const collections = document.getElementById('collections-summary-table').outerHTML;
 
-    // Use a Master Layout Table (Bulletproof for PDFs) instead of flex containers
     return `
     <div style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; color: #2c3e50; padding: 0; width: 100%; box-sizing: border-box;">
         
-        <table style="width: 100%; margin-bottom: 8px; border-collapse: collapse; border: none;">
+        <table style="width: 100%; margin-bottom: 10px; border-collapse: collapse; border: none;">
             <tr>
-                <td style="width: 80px; border: none;"></td> 
+                <td style="width: 100px; border: none;"></td> 
                 <td style="text-align: center; vertical-align: middle; border: none;">
-                    <h2 style="color: #2c3e50; margin: 0; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
-                        FINANCE MIS (${formattedDate})
+                    <h2 style="color: #2c3e50; margin: 0; font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+                        FINANCE MIS SUMMARY
                     </h2>
+                    <p style="color: #7f8c8d; font-size: 11px; margin-top: 3px; font-weight: 600;">REPORT DATE: ${formattedDate}</p>
                 </td>
-                <td style="text-align: right; vertical-align: middle; border: none; width: 80px;">
+                <td style="text-align: right; vertical-align: middle; border: none; width: 100px;">
                     <img src="logo.png" alt="Precifast Logo" style="height: 35px; object-fit: contain;" />
                 </td>
             </tr>
         </table>
         
-        <div style="width: 100%; height: 2px; background-color: #bdc3c7; margin: 0 0 15px 0;"></div>
+        <div style="width: 100%; height: 2px; background-color: #34495e; margin: 0 0 15px 0;"></div>
         
         <table style="width: 100%; border-collapse: collapse; border: none; table-layout: fixed;">
+            
             <tr>
-                <td style="width: 48%; vertical-align: top; border: none; padding-right: 15px;">
-                    <h3 style="color: #2980b9; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #3498db; padding-bottom: 2px;">Sales Summary</h3>
+                <td style="width: 48%; vertical-align: top; border: none;">
+                    <h3 style="color: #2980b9; margin: 0 0 6px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #3498db; padding-bottom: 3px;">Sales Summary</h3>
                     ${sales}
                 </td>
-                <td style="width: 48%; vertical-align: top; border: none; padding-left: 15px;">
-                    <h3 style="color: #d35400; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #e67e22; padding-bottom: 2px;">Purchases Summary</h3>
+                <td style="width: 4%; border: none;"></td> <td style="width: 48%; vertical-align: top; border: none;">
+                    <h3 style="color: #d35400; margin: 0 0 6px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #e67e22; padding-bottom: 3px;">Purchases Summary</h3>
                     ${purchases}
                 </td>
             </tr>
             
-            <tr><td colspan="2" style="height: 20px; border: none;"></td></tr>
+            <tr><td colspan=\"3\" style=\"height: 25px; border: none;\"></td></tr>
 
             <tr>
-                <td style="width: 48%; vertical-align: top; border: none; padding-right: 15px;">
-                    <h3 style="color: #8e44ad; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #9b59b6; padding-bottom: 2px;">Payments Summary</h3>
+                <td style="width: 48%; vertical-align: top; border: none;">
+                    <h3 style="color: #8e44ad; margin: 0 0 6px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #9b59b6; padding-bottom: 3px;">Payments Summary</h3>
                     ${payments}
                 </td>
-                <td style="width: 48%; vertical-align: top; border: none; padding-left: 15px;">
-                    <h3 style="color: #27ae60; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #2ecc71; padding-bottom: 2px;">Collections Summary</h3>
+                <td style="width: 4%; border: none;"></td> <td style="width: 48%; vertical-align: top; border: none;">
+                    <h3 style="color: #27ae60; margin: 0 0 6px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #2ecc71; padding-bottom: 3px;">Collections Summary</h3>
                     ${collections}
                 </td>
             </tr>
@@ -144,34 +144,60 @@ function getExportHTML() {
 const exportCSS = `
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         table.data-table { 
             width: 100%; 
+            table-layout: fixed; 
             border-collapse: collapse; 
-            font-size: 9px; 
+            font-size: 8.5px; 
             font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-            border: 1px solid #bdc3c7;
+            border: 1px solid #dce1e6;
+            height: 215px; /* 📏 CRITICAL FIX: Forces ALL 4 tables to be the exact same height! */
         }
         
         th, td { 
-            border: 1px solid #bdc3c7; /* Darker borders for crisp PDF lines */
-            padding: 5px 6px; 
+            border: 1px solid #dce1e6; 
+            padding: 4px 4px; /* Tightened so the fixed height breathes perfectly */
             word-wrap: break-word; 
+            overflow-wrap: break-word;
+            vertical-align: middle;
         }
         
         th { 
-            background-color: #f4f7fa !important; 
-            color: #34495e !important; 
-            font-weight: bold; 
+            background-color: #f0f4f8 !important; 
+            color: #2c3e50 !important; 
+            font-weight: 800; 
             text-transform: uppercase; 
-            font-size: 9px;
+            font-size: 7.5px; 
+            letter-spacing: 0.1px;
+            white-space: nowrap; 
         }
 
-        /* Forces proper width sizes and aligns currency to the right */
-        table.data-table th:nth-child(1), table.data-table td:nth-child(1) { width: 50%; text-align: left; }
-        table.data-table th:nth-child(2), table.data-table td:nth-child(2) { width: 25%; text-align: right; }
-        table.data-table th:nth-child(3), table.data-table td:nth-child(3) { width: 25%; text-align: right; }
+        table.data-table th:nth-child(1), table.data-table td:nth-child(1) { width: 42%; text-align: left; }
+        table.data-table th:nth-child(2), table.data-table td:nth-child(2) { width: 29%; text-align: right; white-space: nowrap; } 
+        table.data-table th:nth-child(3), table.data-table td:nth-child(3) { width: 29%; text-align: right; white-space: nowrap; }
 
-        tr:nth-child(even) { background-color: #fafbfc; }
+        table.data-table tr:nth-child(even) td { background-color: #f9fbfd !important; }
+        
+        /* ⬆️ FIX: Match sub-item font size to normal names */
+        table.data-table td[style*="padding-left"] { 
+            color: #333 !important; 
+            font-size: 8.5px !important; /* Matches main table font size exactly */
+            font-style: normal !important; /* Removes italics so it looks like regular names */
+            font-weight: 500;
+        }
+
+        table.data-table tfoot th,
+        table.data-table tfoot td,
+        table.data-table tr:last-child td,
+        table.data-table tr:last-child th {
+            font-weight: 900 !important;
+            background-color: #eef2f5 !important;
+            border-top: 1.5px solid #bdc3c7 !important;
+            color: #2c3e50 !important;
+            white-space: nowrap !important; 
+            font-size: 9px !important; 
+        }
     </style>
 `;
 
@@ -180,10 +206,10 @@ function downloadPDF() {
     tempDiv.innerHTML = exportCSS + getExportHTML();
     
     html2pdf().set({ 
-        margin: 0.4, 
-        filename: `Summary_Report_${document.getElementById('date-selector').value || 'Current'}.pdf`, 
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, letterRendering: true }, 
+        margin: 0.35, /* Tighter margins to fit more comfortably */
+        filename: `Finance_MIS_Report_${document.getElementById('date-selector').value || 'Current'}.pdf`, 
+        image: { type: 'jpeg', quality: 1 }, /* Maximum image quality */
+        html2canvas: { scale: 3, useCORS: true, letterRendering: true }, /* Scale 3 makes text ultra-crisp */
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } 
     }).from(tempDiv).save(); 
 }
@@ -330,17 +356,7 @@ async function loadFinanceData() {
             <td>₹${ssRetM.toLocaleString('en-IN')}</td>
         </tr>`;
 
-        // NEW FIX: Catch floating Retail amounts (like unmapped Debits)
-        const otherRetT = rToday - (autoT + indT + ssRetT);
-        const otherRetM = rMtd - (autoM + indM + ssRetM);
         
-        if (otherRetT !== 0 || otherRetM !== 0) {
-            salesRows += `<tr style="background:#f5fff8; color:#e74c3c; font-size:12px;">
-                <td style="padding-left:28px;">↳ Other Retails (Unmapped)</td>
-                <td>₹${otherRetT.toLocaleString('en-IN')}</td>
-                <td>₹${otherRetM.toLocaleString('en-IN')}</td>
-            </tr>`;
-        }
         // 3. UNCATEGORIZED ROW (Catches any missing data so Grand Total is correct)
         const uncategorizedRow = analysis.salesAnalysis.find(r => r._id === 'UNCATEGORIZED') || { today: 0, mtd: 0 };
         const uncToday = Math.round(uncategorizedRow.today);
