@@ -139,10 +139,6 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
                         credit: creditAmount,   // Saving Credit separately
                         invoiceValue: invoiceValue,
                         marketier: getVal(r, ['remakrs', 'remarks', 'marketier'])
-                    };;
-                    const doc = {
-                        invoiceNo: invNo, invoiceDate: parseExcelDate(getVal(r, ['date', 'invoicedate'])),
-                        customer: customerName, invoiceValue: invoiceValue, marketier: getVal(r, ['remakrs', 'remarks', 'marketier'])
                     };
                     bulkSalesOps.push({ updateOne: { filter: { invoiceNo: invNo }, update: { $set: doc }, upsert: true }});
                 });

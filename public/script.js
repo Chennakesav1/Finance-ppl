@@ -340,11 +340,12 @@ async function loadFinanceData() {
             <td>₹${ssRetM.toLocaleString('en-IN')}</td>
         </tr>`;
         // 3. UNCATEGORIZED ROW (Catches any missing data so Grand Total is correct)
+        // 3. UNCATEGORIZED ROW (Catches any missing data so Grand Total is correct)
         const uncategorizedRow = analysis.salesAnalysis.find(r => r._id === 'UNCATEGORIZED') || { today: 0, mtd: 0 };
         const uncToday = Math.round(uncategorizedRow.today);
         const uncMtd = Math.round(uncategorizedRow.mtd);
         
-        if (uncToday > 0 || uncMtd > 0) {
+        if (uncToday > 0 || uncMtd > 0) { // <-- This stops empty rows from showing
             sTodayTotal += uncToday;
             sMtdTotal += uncMtd;
             salesRows += `<tr style="font-weight:600; background:#fff3cd; color:#856404;">
@@ -467,7 +468,19 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
 document.getElementById('manual-sale-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const c = document.getElementById('s-customer-select').value;
-    await fetch(`${API_BASE}/api/finance/manual-sale`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ invoiceDate: document.getElementById('s-date').value, customer: c === 'Other' ? document.getElementById('s-customer-new').value : c, invoiceNo: document.getElementById('s-invNo').value, invoiceValue: parseFloat(document.getElementById('s-val').value), marketier: document.getElementById('s-marketier').value }) });
+    const saleValue = parseFloat(document.getElementById('s-val').value) || 0;
+    await fetch(`${API_BASE}/api/finance/manual-sale`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+            invoiceDate: document.getElementById('s-date').value, 
+            customer: c === 'Other' ? document.getElementById('s-customer-new').value : c, 
+            invoiceNo: document.getElementById('s-invNo').value, 
+            invoiceValue: saleValue, 
+            debit: saleValue, // <-- This ensures it shows up in your table!
+            marketier: document.getElementById('s-marketier').value 
+        }) 
+    });
     showToast("✅ Sale Saved"); document.getElementById('manual-sale-form').reset(); document.getElementById('s-customer-new').style.display = 'none'; loadFinanceData();
 });
 
