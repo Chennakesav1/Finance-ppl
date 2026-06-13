@@ -61,12 +61,11 @@ const getVal = (row, searchStrs) => {
     }
     return undefined;
 };
-// Add this right below your getVal function in server.js
 const parseAmount = (val) => {
     if (val === undefined || val === null || val === '') return 0;
     if (typeof val === 'number') return val;
-    // Strip commas and spaces out of the string before parsing
-    const parsed = parseFloat(String(val).replace(/,/g, '').trim());
+    // Strips out commas and spaces so "21,459.00" becomes perfectly readable
+    const parsed = parseFloat(String(val).replace(/[^0-9.-]+/g, ''));
     return isNaN(parsed) ? 0 : parsed;
 };
 const getSheetName = (workbook, targetName) => workbook.SheetNames.find(s => s.replace(/\s/g, '').toLowerCase() === targetName.toLowerCase());
@@ -133,6 +132,7 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
                     const invNo = getVal(r, ['vchno', 'invoiceno']);
                     if (!invNo) return; 
                     // Replace the old debit/credit variables with this:
+                    // Force the parser to read the numbers cleanly
                     const debitAmount = parseAmount(getVal(r, ['debit', 'debitamount', 'dr']));
                     const creditAmount = parseAmount(getVal(r, ['credit', 'creditamount', 'cr']));
 
@@ -142,8 +142,8 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
                         invoiceNo: invNo,
                         invoiceDate: parseExcelDate(getVal(r, ['date', 'invoicedate'])),
                         customer: customerName,
-                        debit: debitAmount,
-                        credit: creditAmount,
+                        debit: debitAmount,     // Now it will actually save!
+                        credit: creditAmount,   // Now it will actually save!
                         invoiceValue: invoiceValue,
                         marketier: getVal(r, ['remakrs', 'remarks', 'marketier'])
                     };

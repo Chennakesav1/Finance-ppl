@@ -5,8 +5,8 @@ const invoiceSchema = new mongoose.Schema({
     invoiceDate: Date,
     customer: String,
     invoiceValue: Number,
-    debit: { type: Number, default: 0 },   // ADD THIS
-    credit: { type: Number, default: 0 },  // ADD THIS
+    debit: { type: Number, default: 0 },   // <--- MONGODB WILL NOW SAVE THIS
+    credit: { type: Number, default: 0 },  // <--- MONGODB WILL NOW SAVE THIS
     marketier: String
 });
 
