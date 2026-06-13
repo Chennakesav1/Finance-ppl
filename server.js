@@ -19,18 +19,35 @@ mongoose.connect(MONGO_URI)
 
 const parseExcelDate = (val) => {
     if (!val || val === '') return null; 
+
+    // 1. Raw Excel Serial Numbers
     if (typeof val === 'number') {
         const d = new Date(Math.round((val - 25569) * 86400 * 1000));
         return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0));
     }
+
+    // 2. The Timezone Fix (When xlsx automatically creates a Date object)
+    if (val instanceof Date) {
+        // Adds 6 hours to safely push backward-shifted times (like 18:30) into the correct day!
+        const safeDate = new Date(val.getTime() + (6 * 60 * 60 * 1000));
+        return new Date(Date.UTC(safeDate.getUTCFullYear(), safeDate.getUTCMonth(), safeDate.getUTCDate(), 12, 0, 0));
+    }
+
     let strVal = String(val).trim();
+
+    // 3. String Matches
+    const ymdMatch = strVal.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (ymdMatch) return new Date(Date.UTC(parseInt(ymdMatch[1]), parseInt(ymdMatch[2]) - 1, parseInt(ymdMatch[3]), 12, 0, 0));
+
     const dmyMatch = strVal.match(/^(\d{2})-(\d{2})-(\d{4})/);
     if (dmyMatch) return new Date(Date.UTC(parseInt(dmyMatch[3]), parseInt(dmyMatch[2]) - 1, parseInt(dmyMatch[1]), 12, 0, 0));
+
+    // 4. Fallback for weird strings
     const d = new Date(val);
     if (isNaN(d.valueOf())) return null;
-    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0));
+    const safeDate = new Date(d.getTime() + (6 * 60 * 60 * 1000));
+    return new Date(Date.UTC(safeDate.getUTCFullYear(), safeDate.getUTCMonth(), safeDate.getUTCDate(), 12, 0, 0));
 };
-
 const parseExcelDateTime = (val) => {
     if (!val || val === '') return null; 
     if (typeof val === 'number') return new Date((val - 25569) * 86400 * 1000); 
@@ -112,45 +129,68 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
         }
 
         // 2. SALES
-        const salesTab = getSheetName(workbook, 'Sales');
-        if (salesTab) {
-            const sheet = workbook.Sheets[salesTab];
-            const rawArray = xlsx.utils.sheet_to_json(sheet, { header: 1 });
-            let headerRowIndex = -1;
-            for (let i = 0; i < rawArray.length; i++) {
-                const rowStr = (rawArray[i] || []).join(' ').toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (rowStr.includes('vchno') && rowStr.includes('particulars')) { headerRowIndex = i; break; }
+        let isSalesStmt = false, salesHeaderIndex = -1, salesSheetName = null;
+        
+        // Step A: Dynamically search all sheets for "vchno" and "particulars"
+        for (let sheetName of workbook.SheetNames) {
+            const rawSheet = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+            for (let i = 0; i < Math.min(rawSheet.length, 20); i++) {
+                const rowStr = (rawSheet[i] || []).join(' ').toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (rowStr.includes('vchno') && rowStr.includes('particulars')) { 
+                    isSalesStmt = true; salesSheetName = sheetName; salesHeaderIndex = i; break; 
+                }
             }
-            if (headerRowIndex !== -1) {
-                const rawSales = xlsx.utils.sheet_to_json(sheet, { range: headerRowIndex });
-                const bulkSalesOps = [];
-                rawSales.forEach(r => {
-                    let customerName = r['Particulars'];
-                    if (customerName && (customerName.trim().toLowerCase() === 'by' || customerName.trim().toLowerCase() === 'to')) {
-                        customerName = r['__EMPTY'] || r['__EMPTY_1'] || r['__EMPTY_2'];
-                    } else if (!customerName) { customerName = r['__EMPTY'] || r['__EMPTY_1']; }
-                    const invNo = getVal(r, ['vchno', 'invoiceno']);
-                    if (!invNo) return; 
-                    // Replace the old debit/credit variables with this:
-                    // Force the parser to read the numbers cleanly
-                    const debitAmount = parseAmount(getVal(r, ['debit', 'debitamount', 'dr']));
-                    const creditAmount = parseAmount(getVal(r, ['credit', 'creditamount', 'cr']));
+            if (isSalesStmt) break;
+        }
 
-                    const invoiceValue = debitAmount > 0 ? debitAmount : creditAmount;
+        // Step B: If found, process the data no matter what the tab is named
+        if (isSalesStmt) {
+            const sheet = workbook.Sheets[salesSheetName];
+            const rawSales = xlsx.utils.sheet_to_json(sheet, { range: salesHeaderIndex });
+            const bulkSalesOps = [];
+            
+            // Bulletproof number parser (removes commas from 84,961.00)
+            const parseAmount = (val) => {
+                if (val === undefined || val === null || val === '') return 0;
+                if (typeof val === 'number') return val;
+                const parsed = parseFloat(String(val).replace(/[^0-9.-]+/g, ''));
+                return isNaN(parsed) ? 0 : parsed;
+            };
 
-                    const doc = {
-                        invoiceNo: invNo,
-                        invoiceDate: parseExcelDate(getVal(r, ['date', 'invoicedate'])),
-                        customer: customerName,
-                        debit: debitAmount,     // Now it will actually save!
-                        credit: creditAmount,   // Now it will actually save!
-                        invoiceValue: invoiceValue,
-                        marketier: getVal(r, ['remakrs', 'remarks', 'marketier'])
-                    };
-                    bulkSalesOps.push({ updateOne: { filter: { invoiceNo: invNo }, update: { $set: doc }, upsert: true }});
-                });
-                if (bulkSalesOps.length > 0) await Invoice.bulkWrite(bulkSalesOps);
-            }
+            rawSales.forEach(r => {
+                let customerName = r['Particulars'];
+                if (customerName && (customerName.trim().toLowerCase() === 'by' || customerName.trim().toLowerCase() === 'to')) {
+                    customerName = r['__EMPTY'] || r['__EMPTY_1'] || r['__EMPTY_2'];
+                } else if (!customerName) { customerName = r['__EMPTY'] || r['__EMPTY_1']; }
+                const invNo = getVal(r, ['vchno', 'invoiceno']);
+                if (!invNo) return; 
+
+                // Use the parser to extract clean numbers
+                const debitAmount = parseAmount(getVal(r, ['debit', 'debitamount', 'dr']));
+                const creditAmount = parseAmount(getVal(r, ['credit', 'creditamount', 'cr']));
+
+                // THE MATH FIX: Net Sales = Credit (Sales) - Debit (Credit Notes / Returns)
+                const invoiceValue = creditAmount - debitAmount;
+
+                const doc = {
+                    invoiceNo: invNo,
+                    invoiceDate: parseExcelDate(getVal(r, ['date', 'invoicedate'])),
+                    customer: customerName,
+                    debit: debitAmount,
+                    credit: creditAmount,
+                    invoiceValue: invoiceValue,
+                    marketier: getVal(r, ['remakrs', 'remarks', 'marketier'])
+                };
+
+                // === THE SPY ===
+                console.log("--- NEW SALE DETECTED ---");
+                console.log("Customer:", customerName);
+                console.log("Debit Found:", debitAmount, "| Credit Found:", creditAmount);
+                console.log("-------------------------");
+
+                bulkSalesOps.push({ updateOne: { filter: { invoiceNo: invNo }, update: { $set: doc }, upsert: true }});
+            });
+            if (bulkSalesOps.length > 0) await Invoice.bulkWrite(bulkSalesOps);
         }
 
         // 3. PURCHASES
@@ -329,6 +369,11 @@ app.get('/api/finance/all-data', async (req, res) => {
             let isSS = ssLedgerNames.some(n => custUpper === n || custUpper.includes(n) || n.includes(custUpper));
             let isBajaj = bajajLedgerNames.some(n => custUpper.includes(n) || n.includes(custUpper)) || custUpper.includes('BAJAJ');
             let isGabriel = gabrielLedgerNames.some(n => custUpper.includes(n) || n.includes(custUpper)) || custUpper.includes('GABRIEL');
+
+            // 👉 THE "CUT IN" FIX: Force unmapped Retails to cut from the AUTO sector automatically
+            if (markUpper === 'RETAILS' && !isAuto && !isInd && !isSS) {
+                isAuto = true;
+            }
 
             // Force the Main Category based on ledger match
             if (isAuto || isInd) markUpper = 'RETAILS';

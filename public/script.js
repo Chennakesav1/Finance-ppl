@@ -334,12 +334,24 @@ async function loadFinanceData() {
         // 2. Retails sub-rows: SS (Merge existing SS and SS Dealers amounts here)
         const ssRetT = Math.round(retailSubAnalysis['SS']?.today || 0) + Math.round(ssRow.today);
         const ssRetM = Math.round(retailSubAnalysis['SS']?.mtd || 0) + Math.round(ssRow.mtd);
+        // ... (Existing SS sub-row logic above) ...
         salesRows += `<tr style="background:#f5fff8; color:#555; font-size:12px;">
             <td style="padding-left:28px;">↳ SS</td>
             <td>₹${ssRetT.toLocaleString('en-IN')}</td>
             <td>₹${ssRetM.toLocaleString('en-IN')}</td>
         </tr>`;
-        // 3. UNCATEGORIZED ROW (Catches any missing data so Grand Total is correct)
+
+        // NEW FIX: Catch floating Retail amounts (like unmapped Debits)
+        const otherRetT = rToday - (autoT + indT + ssRetT);
+        const otherRetM = rMtd - (autoM + indM + ssRetM);
+        
+        if (otherRetT !== 0 || otherRetM !== 0) {
+            salesRows += `<tr style="background:#f5fff8; color:#e74c3c; font-size:12px;">
+                <td style="padding-left:28px;">↳ Other Retails (Unmapped)</td>
+                <td>₹${otherRetT.toLocaleString('en-IN')}</td>
+                <td>₹${otherRetM.toLocaleString('en-IN')}</td>
+            </tr>`;
+        }
         // 3. UNCATEGORIZED ROW (Catches any missing data so Grand Total is correct)
         const uncategorizedRow = analysis.salesAnalysis.find(r => r._id === 'UNCATEGORIZED') || { today: 0, mtd: 0 };
         const uncToday = Math.round(uncategorizedRow.today);
@@ -404,7 +416,7 @@ async function loadFinanceData() {
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceDate', 'Sales', this)">${formatDate(inv.invoiceDate)}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'customer', 'Sales', this)">${inv.customer || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceNo', 'Sales', this)">${inv.invoiceNo || ''}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'debit', 'Sales', this)" style="color:#c0392b; font-weight:bold;">₹${Math.round(inv.debit || inv.invoiceValue || 0).toLocaleString('en-IN')}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'debit', 'Sales', this)" style="color:#c0392b; font-weight:bold;">₹${Math.round(inv.debit || 0).toLocaleString('en-IN')}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'credit', 'Sales', this)" style="color:#27ae60; font-weight:bold;">₹${Math.round(inv.credit || 0).toLocaleString('en-IN')}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'marketier', 'Sales', this)">${(inv.marketier || '').toUpperCase()}</td>
             </tr>
