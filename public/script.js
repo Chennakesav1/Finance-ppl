@@ -86,12 +86,13 @@ function getExportHTML() {
     const [year, month, day] = rawDate.split('-');
     const formattedDate = `${day}-${month}-${year}`;
 
-    // Replace the opening table tags to inject height: 100% dynamically
-    const sales = document.getElementById('sales-summary-table').outerHTML.replace('<table class="data-table"', '<table class="data-table" style="height: 100%; display: flex; flex-direction: column;"');
-    const purchases = document.getElementById('purchase-summary-table').outerHTML.replace('<table class="data-table"', '<table class="data-table" style="height: 100%; display: flex; flex-direction: column;"');
-    const payments = document.getElementById('payments-summary-table').outerHTML.replace('<table class="data-table"', '<table class="data-table" style="height: 100%; display: flex; flex-direction: column;"');
-    const collections = document.getElementById('collections-summary-table').outerHTML.replace('<table class="data-table"', '<table class="data-table" style="height: 100%; display: flex; flex-direction: column;"');
+    // Pure HTML - No flexbox hacks on tables!
+    const sales = document.getElementById('sales-summary-table').outerHTML;
+    const purchases = document.getElementById('purchase-summary-table').outerHTML;
+    const payments = document.getElementById('payments-summary-table').outerHTML;
+    const collections = document.getElementById('collections-summary-table').outerHTML;
 
+    // Use a Master Layout Table (Bulletproof for PDFs) instead of flex containers
     return `
     <div style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; color: #2c3e50; padding: 0; width: 100%; box-sizing: border-box;">
         
@@ -111,78 +112,66 @@ function getExportHTML() {
         
         <div style="width: 100%; height: 2px; background-color: #bdc3c7; margin: 0 0 15px 0;"></div>
         
-        <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items: stretch;">
-            <div style="flex: 1; display: flex; flex-direction: column;">
-                <h3 style="color: #2980b9; margin: 0 0 5px 0; font-size: 16px; border-bottom: 2px solid #3498db; padding-bottom: 2px;">Sales Summary</h3>
-                ${sales}
-            </div>
-            <div style="flex: 1; display: flex; flex-direction: column;">
-                <h3 style="color: #d35400; margin: 0 0 5px 0; font-size: 16px; border-bottom: 2px solid #e67e22; padding-bottom: 2px;">Purchases Summary</h3>
-                ${purchases}
-            </div>
-        </div>
+        <table style="width: 100%; border-collapse: collapse; border: none; table-layout: fixed;">
+            <tr>
+                <td style="width: 48%; vertical-align: top; border: none; padding-right: 15px;">
+                    <h3 style="color: #2980b9; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #3498db; padding-bottom: 2px;">Sales Summary</h3>
+                    ${sales}
+                </td>
+                <td style="width: 48%; vertical-align: top; border: none; padding-left: 15px;">
+                    <h3 style="color: #d35400; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #e67e22; padding-bottom: 2px;">Purchases Summary</h3>
+                    ${purchases}
+                </td>
+            </tr>
+            
+            <tr><td colspan="2" style="height: 20px; border: none;"></td></tr>
 
-        <div style="display: flex; gap: 15px; align-items: stretch;">
-            <div style="flex: 1; display: flex; flex-direction: column;">
-                <h3 style="color: #8e44ad; margin: 0 0 5px 0; font-size: 16px; border-bottom: 2px solid #9b59b6; padding-bottom: 2px;">Payments Summary</h3>
-                ${payments}
-            </div>
-            <div style="flex: 1; display: flex; flex-direction: column;">
-                <h3 style="color: #27ae60; margin: 0 0 5px 0; font-size: 16px; border-bottom: 2px solid #2ecc71; padding-bottom: 2px;">Collections Summary</h3>
-                ${collections}
-            </div>
-        </div>
+            <tr>
+                <td style="width: 48%; vertical-align: top; border: none; padding-right: 15px;">
+                    <h3 style="color: #8e44ad; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #9b59b6; padding-bottom: 2px;">Payments Summary</h3>
+                    ${payments}
+                </td>
+                <td style="width: 48%; vertical-align: top; border: none; padding-left: 15px;">
+                    <h3 style="color: #27ae60; margin: 0 0 5px 0; font-size: 14px; border-bottom: 2px solid #2ecc71; padding-bottom: 2px;">Collections Summary</h3>
+                    ${collections}
+                </td>
+            </tr>
+        </table>
     </div>
     `;
 }
 
-// Global beautiful CSS injected into both PDF and Word exports
 const exportCSS = `
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         table.data-table { 
             width: 100%; 
-            table-layout: fixed; 
             border-collapse: collapse; 
-            font-size: 7.5px; /* Slightly smaller overall text */
+            font-size: 9px; 
             font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-            border: 1px solid #e0e6ed;
+            border: 1px solid #bdc3c7;
         }
         
-        /* 2. Force the 'Particulars' column to be wider to stop text wrapping issues */
-        table.data-table th:nth-child(1),
-        table.data-table td:nth-child(1) {
-            width: 40%;
+        th, td { 
+            border: 1px solid #bdc3c7; /* Darker borders for crisp PDF lines */
+            padding: 5px 6px; 
+            word-wrap: break-word; 
         }
-        table.data-table th:nth-child(2),
-        table.data-table td:nth-child(2),
-        table.data-table th:nth-child(3),
-        table.data-table td:nth-child(3) {
-            width: 30%;
+        
+        th { 
+            background-color: #f4f7fa !important; 
+            color: #34495e !important; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            font-size: 9px;
         }
 
-        th, td { 
-            border: 1px solid #e0e6ed; 
-            padding: 3px 4px; /* Reduced padding to save space */
-            text-align: left; 
-            word-wrap: break-word; 
-            overflow-wrap: break-word;
-        }
-        th { 
-            background-color: #f4f7fa; 
-            color: #34495e; 
-            font-weight: 700; 
-            text-transform: uppercase; 
-            font-size: 7.5px;
-        }
+        /* Forces proper width sizes and aligns currency to the right */
+        table.data-table th:nth-child(1), table.data-table td:nth-child(1) { width: 50%; text-align: left; }
+        table.data-table th:nth-child(2), table.data-table td:nth-child(2) { width: 25%; text-align: right; }
+        table.data-table th:nth-child(3), table.data-table td:nth-child(3) { width: 25%; text-align: right; }
+
         tr:nth-child(even) { background-color: #fafbfc; }
-        tfoot th { 
-            background-color: #ecf0f1; 
-            color: #2c3e50; 
-            font-weight: 700; 
-            font-size: 8px; /* 3. Decreased Grand Total Font Size */
-            border-top: 2px solid #bdc3c7; 
-        }
     </style>
 `;
 
@@ -190,11 +179,11 @@ function downloadPDF() {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = exportCSS + getExportHTML();
     
-    // Adjusted margins to give the content enough breathing room to fit on one page
     html2pdf().set({ 
-        margin: [0.3, 0.3, 0.3, 0.3], // Top, Right, Bottom, Left margins in inches
+        margin: 0.4, 
         filename: `Summary_Report_${document.getElementById('date-selector').value || 'Current'}.pdf`, 
-        html2canvas: { scale: 2, useCORS: true }, // useCORS helps load the logo image properly
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, letterRendering: true }, 
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } 
     }).from(tempDiv).save(); 
 }
