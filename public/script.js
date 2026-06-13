@@ -339,7 +339,7 @@ async function loadFinanceData() {
             <td>₹${ssRetT.toLocaleString('en-IN')}</td>
             <td>₹${ssRetM.toLocaleString('en-IN')}</td>
         </tr>`;
-        // 3. UNCATEGORIZED ROW (Catches any missing data)
+        // 3. UNCATEGORIZED ROW (Catches any missing data so Grand Total is correct)
         const uncategorizedRow = analysis.salesAnalysis.find(r => r._id === 'UNCATEGORIZED') || { today: 0, mtd: 0 };
         const uncToday = Math.round(uncategorizedRow.today);
         const uncMtd = Math.round(uncategorizedRow.mtd);
@@ -397,14 +397,14 @@ async function loadFinanceData() {
         document.getElementById('col-today-total').innerText = `₹${colTodayTotal.toLocaleString('en-IN')}`;
         document.getElementById('col-mtd-total').innerText = `₹${colMtdTotal.toLocaleString('en-IN')}`;
 
-        // 💥 APPLIED Math.round() TO DATA TABLES TOO FOR CONSISTENCY
         document.getElementById('sales-body').innerHTML = tables.receivables.map((inv, index) => `
             <tr>
                 <td><strong>${index + 1}</strong></td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceDate', 'Sales', this)">${formatDate(inv.invoiceDate)}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'customer', 'Sales', this)">${inv.customer || ''}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceNo', 'Sales', this)">${inv.invoiceNo || ''}</td>
-                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'invoiceValue', 'Sales', this)">₹${Math.round(inv.invoiceValue || 0).toLocaleString('en-IN')}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'debit', 'Sales', this)" style="color:#c0392b; font-weight:bold;">₹${Math.round(inv.debit !== undefined ? inv.debit : (inv.invoiceValue || 0)).toLocaleString('en-IN')}</td>
+                <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'credit', 'Sales', this)" style="color:#27ae60; font-weight:bold;">₹${Math.round(inv.credit || 0).toLocaleString('en-IN')}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'marketier', 'Sales', this)">${(inv.marketier || '').toUpperCase()}</td>
             </tr>
         `).join('');

@@ -1,10 +1,12 @@
 const mongoose = require('mongoose');
 
 const invoiceSchema = new mongoose.Schema({
+    invoiceNo: String,
     invoiceDate: Date,
     customer: String,
-    invoiceNo: String,
     invoiceValue: Number,
+    debit: { type: Number, default: 0 },   // ADD THIS
+    credit: { type: Number, default: 0 },  // ADD THIS
     marketier: String
 });
 

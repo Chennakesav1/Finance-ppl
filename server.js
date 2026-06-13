@@ -125,7 +125,21 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
                     } else if (!customerName) { customerName = r['__EMPTY'] || r['__EMPTY_1']; }
                     const invNo = getVal(r, ['vchno', 'invoiceno']);
                     if (!invNo) return; 
-                    let invoiceValue = parseFloat(getVal(r, ['debit'])) || parseFloat(getVal(r, ['credit'])) || parseFloat(getVal(r, ['invoicevalue'])) || 0;
+                    const debitAmount = parseFloat(getVal(r, ['debit'])) || 0;
+                    const creditAmount = parseFloat(getVal(r, ['credit'])) || 0;
+
+                    // Keep invoiceValue for your Summary Dashboard math, prioritizing the Debit value
+                    const invoiceValue = debitAmount > 0 ? debitAmount : creditAmount;
+
+                    const doc = {
+                        invoiceNo: invNo,
+                        invoiceDate: parseExcelDate(getVal(r, ['date', 'invoicedate'])),
+                        customer: customerName,
+                        debit: debitAmount,     // Saving Debit separately
+                        credit: creditAmount,   // Saving Credit separately
+                        invoiceValue: invoiceValue,
+                        marketier: getVal(r, ['remakrs', 'remarks', 'marketier'])
+                    };;
                     const doc = {
                         invoiceNo: invNo, invoiceDate: parseExcelDate(getVal(r, ['date', 'invoicedate'])),
                         customer: customerName, invoiceValue: invoiceValue, marketier: getVal(r, ['remakrs', 'remarks', 'marketier'])
