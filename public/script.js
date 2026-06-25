@@ -45,7 +45,11 @@ const matchCategory = (targetCat, dataCat) => {
     const actual = (dataCat || '').toUpperCase().trim();
     if (!actual) return false;
     
+    // Catch known abbreviations
     if (target === 'SECURITY DEPOSITS' && (actual === 'S D' || actual === 'SD')) return true;
+    
+    // 💥 CATCH THE SPELLING TYPO
+    if (target === 'STATUTORY' && actual === 'STATUTARY') return true;
     
     return actual === target || actual.includes(target) || target.includes(actual);
 };
@@ -373,12 +377,17 @@ async function loadFinanceData() {
         }
 
         // --- PURCHASES ---
+        // --- PURCHASES ---
         const purCats = ['CONSUMABLES', 'LOGISTICS', 'MAINTANANCE', 'OUTSOURCING', 'PACKING CONSU.', 'RM', 'TOOLS'];
         let pTodayTotal = 0, pMtdTotal = 0;
         let purHtml = purCats.map(cat => {
-            const row = analysis.purchaseAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
-            const roundedToday = Math.round(row.today);
-            const roundedMtd = Math.round(row.mtd);
+            // 💥 FIX: Filter all matching variations and sum them up
+            const matchingRows = analysis.purchaseAnalysis.filter(r => matchCategory(cat, r._id));
+            const totalToday = matchingRows.reduce((sum, r) => sum + (r.today || 0), 0);
+            const totalMtd = matchingRows.reduce((sum, r) => sum + (r.mtd || 0), 0);
+
+            const roundedToday = Math.round(totalToday);
+            const roundedMtd = Math.round(totalMtd);
             pTodayTotal += roundedToday; 
             pMtdTotal += roundedMtd;
             return `<tr><td>${cat}</td><td>₹${roundedToday.toLocaleString('en-IN')}</td><td>₹${roundedMtd.toLocaleString('en-IN')}</td></tr>`;
@@ -404,9 +413,13 @@ async function loadFinanceData() {
         const payCats = ['RM', 'STATUTORY', 'TOOLS /CONSU/R&M', 'SUNDRY EXP', 'FREIGHT', 'GCD', 'USL', 'OTHERS'];
         let payTodayTotal = 0, payMtdTotal = 0;
         let payHtml = payCats.map(cat => {
-            const row = analysis.paymentAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
-            const roundedToday = Math.round(row.today);
-            const roundedMtd = Math.round(row.mtd);
+            // 💥 FIX: Filter all matching variations and sum them up
+            const matchingRows = analysis.paymentAnalysis.filter(r => matchCategory(cat, r._id));
+            const totalToday = matchingRows.reduce((sum, r) => sum + (r.today || 0), 0);
+            const totalMtd = matchingRows.reduce((sum, r) => sum + (r.mtd || 0), 0);
+
+            const roundedToday = Math.round(totalToday);
+            const roundedMtd = Math.round(totalMtd);
             payTodayTotal += roundedToday; 
             payMtdTotal += roundedMtd;
             return `<tr><td>${cat}</td><td>₹${roundedToday.toLocaleString('en-IN')}</td><td>₹${roundedMtd.toLocaleString('en-IN')}</td></tr>`;
@@ -416,9 +429,13 @@ async function loadFinanceData() {
         const colCats = ['OE', 'RETAILS', 'OTHER INCOME', 'SECURITY DEPOSITS', 'USL', 'BANK INTEREST'];
         let colTodayTotal = 0, colMtdTotal = 0;
         let colHtml = colCats.map(cat => {
-            const row = analysis.collectionAnalysis.find(r => matchCategory(cat, r._id)) || { today: 0, mtd: 0 };
-            const roundedToday = Math.round(row.today);
-            const roundedMtd = Math.round(row.mtd);
+            // 💥 FIX: Filter all matching variations and sum them up
+            const matchingRows = analysis.collectionAnalysis.filter(r => matchCategory(cat, r._id));
+            const totalToday = matchingRows.reduce((sum, r) => sum + (r.today || 0), 0);
+            const totalMtd = matchingRows.reduce((sum, r) => sum + (r.mtd || 0), 0);
+
+            const roundedToday = Math.round(totalToday);
+            const roundedMtd = Math.round(totalMtd);
             colTodayTotal += roundedToday; 
             colMtdTotal += roundedMtd;
             return `<tr><td>${cat}</td><td>₹${roundedToday.toLocaleString('en-IN')}</td><td>₹${roundedMtd.toLocaleString('en-IN')}</td></tr>`;
@@ -713,3 +730,58 @@ function dropdownChange(id, field, type, selectElement) {
         loadSundryLedgers(); 
     }
 }
+
+
+// ── Sticky bottom scrollbar — always visible at bottom of screen ──
+function initStickyScrollbars() {
+    document.querySelectorAll('.table-wrapper').forEach(wrapper => {
+        // Skip if already done
+        if (wrapper.querySelector('.sticky-scroll-bar')) return;
+
+        const stickyBar = document.createElement('div');
+        stickyBar.className = 'sticky-scroll-bar';
+        const inner = document.createElement('div');
+        inner.className = 'sticky-scroll-bar-inner';
+        stickyBar.appendChild(inner);
+
+        // Put sticky bar INSIDE the wrapper so it sticks to wrapper's bottom
+        wrapper.appendChild(stickyBar);
+
+        function syncWidth() {
+            const maxScroll = wrapper.scrollWidth - wrapper.clientWidth;
+            inner.style.width = wrapper.scrollWidth + 'px';
+            stickyBar.style.display = maxScroll > 5 ? 'block' : 'none';
+        }
+        syncWidth();
+
+        // Sync: drag sticky bar → scroll table
+        stickyBar.addEventListener('scroll', () => {
+            if (!stickyBar._syncing) {
+                stickyBar._syncing = true;
+                wrapper.scrollLeft = stickyBar.scrollLeft;
+                stickyBar._syncing = false;
+            }
+        });
+
+        // Sync: scroll table → move sticky bar
+        wrapper.addEventListener('scroll', () => {
+            if (!stickyBar._syncing) {
+                stickyBar._syncing = true;
+                stickyBar.scrollLeft = wrapper.scrollLeft;
+                stickyBar._syncing = false;
+            }
+        });
+
+        const observer = new MutationObserver(() => setTimeout(syncWidth, 50));
+        observer.observe(wrapper, { childList: true, subtree: true });
+        window.addEventListener('resize', syncWidth);
+    });
+}
+
+const _origLoad = loadFinanceData;
+loadFinanceData = async function(...args) {
+    await _origLoad.apply(this, args);
+    setTimeout(initStickyScrollbars, 200);
+};
+
+document.addEventListener('DOMContentLoaded', () => setTimeout(initStickyScrollbars, 400));
