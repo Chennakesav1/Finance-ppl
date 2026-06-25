@@ -732,56 +732,68 @@ function dropdownChange(id, field, type, selectElement) {
 }
 
 
-// ── Sticky bottom scrollbar — always visible at bottom of screen ──
-function initStickyScrollbars() {
-    document.querySelectorAll('.table-wrapper').forEach(wrapper => {
-        // Skip if already done
-        if (wrapper.querySelector('.sticky-scroll-bar')) return;
+// ── FIXED scrollbar pinned to bottom of browser window ──
+(function () {
 
-        const stickyBar = document.createElement('div');
-        stickyBar.className = 'sticky-scroll-bar';
-        const inner = document.createElement('div');
-        inner.className = 'sticky-scroll-bar-inner';
-        stickyBar.appendChild(inner);
+    // Build the bar and inject into body
+    const bar = document.createElement('div');
+    bar.id = 'hscroll-fixed';
+    bar.innerHTML = '<div id="hscroll-fixed-inner"></div>';
+    document.body.appendChild(bar);
 
-        // Put sticky bar INSIDE the wrapper so it sticks to wrapper's bottom
-        wrapper.appendChild(stickyBar);
+    let activeWrapper = null;
+    let syncing = false;
 
-        function syncWidth() {
-            const maxScroll = wrapper.scrollWidth - wrapper.clientWidth;
-            inner.style.width = wrapper.scrollWidth + 'px';
-            stickyBar.style.display = maxScroll > 5 ? 'block' : 'none';
-        }
-        syncWidth();
-
-        // Sync: drag sticky bar → scroll table
-        stickyBar.addEventListener('scroll', () => {
-            if (!stickyBar._syncing) {
-                stickyBar._syncing = true;
-                wrapper.scrollLeft = stickyBar.scrollLeft;
-                stickyBar._syncing = false;
-            }
-        });
-
-        // Sync: scroll table → move sticky bar
-        wrapper.addEventListener('scroll', () => {
-            if (!stickyBar._syncing) {
-                stickyBar._syncing = true;
-                stickyBar.scrollLeft = wrapper.scrollLeft;
-                stickyBar._syncing = false;
-            }
-        });
-
-        const observer = new MutationObserver(() => setTimeout(syncWidth, 50));
-        observer.observe(wrapper, { childList: true, subtree: true });
-        window.addEventListener('resize', syncWidth);
+    // Drag bar → scroll table
+    bar.addEventListener('scroll', () => {
+        if (syncing || !activeWrapper) return;
+        syncing = true;
+        activeWrapper.scrollLeft = bar.scrollLeft;
+        syncing = false;
     });
-}
 
-const _origLoad = loadFinanceData;
-loadFinanceData = async function(...args) {
-    await _origLoad.apply(this, args);
-    setTimeout(initStickyScrollbars, 200);
-};
+    function setActiveWrapper(wrapper) {
+        activeWrapper = wrapper;
+        const scrollable = wrapper.scrollWidth - wrapper.clientWidth;
+        if (scrollable < 5) { bar.style.display = 'none'; return; }
+        document.getElementById('hscroll-fixed-inner').style.width = wrapper.scrollWidth + 'px';
+        bar.scrollLeft = wrapper.scrollLeft;
+        bar.style.display = 'block';
+    }
 
-document.addEventListener('DOMContentLoaded', () => setTimeout(initStickyScrollbars, 400));
+    function hookWrapper(wrapper) {
+        if (wrapper._hscrollHooked) return;
+        wrapper._hscrollHooked = true;
+
+        // Table scrolled → move bar thumb
+        wrapper.addEventListener('scroll', () => {
+            if (syncing) return;
+            syncing = true;
+            bar.scrollLeft = wrapper.scrollLeft;
+            syncing = false;
+        });
+
+        // Watch when this table enters the visible viewport
+        new IntersectionObserver((entries) => {
+            entries.forEach(e => { if (e.isIntersecting) setActiveWrapper(wrapper); });
+        }, { threshold: 0.05 }).observe(wrapper);
+
+        // Watch if table data changes (more rows loaded)
+        new MutationObserver(() => {
+            if (activeWrapper === wrapper) setActiveWrapper(wrapper);
+        }).observe(wrapper, { childList: true, subtree: true });
+    }
+
+    function init() {
+        document.querySelectorAll('.table-wrapper').forEach(hookWrapper);
+    }
+
+    // Re-run init after every data load
+    const _orig = loadFinanceData;
+    loadFinanceData = async function (...a) {
+        await _orig.apply(this, a);
+        setTimeout(init, 300);
+    };
+
+    document.addEventListener('DOMContentLoaded', () => setTimeout(init, 500));
+})();

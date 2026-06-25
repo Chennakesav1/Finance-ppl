@@ -60,21 +60,25 @@ input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
 table.data-table tbody { flex-grow: 1; }
 table.data-table tfoot { margin-top: auto; }
 
-/* ── Sticky Bottom Scrollbar — always visible at bottom of screen while scrolling data ── */
-.sticky-scroll-bar {
-    position: sticky;
+
+/* ── Fixed horizontal scrollbar — always at very bottom of screen ── */
+#hscroll-fixed {
+    position: fixed;
     bottom: 0;
-    left: 0;
-    width: 100%;
-    overflow-x: auto;
+    left: 250px;          /* right after sidebar */
+    right: 0;
+    height: 16px;
+    overflow-x: scroll;
     overflow-y: hidden;
-    height: 14px;
     background: #cfd8dc;
-    z-index: 99;
     border-top: 2px solid #90a4ae;
-    border-radius: 0 0 8px 8px;
+    z-index: 9999;
+    display: none;        /* hidden until a wide table is visible */
 }
-.sticky-scroll-bar-inner {
+#hscroll-fixed-inner {
     height: 1px;
-    display: block;
 }
+#hscroll-fixed::-webkit-scrollbar        { height: 16px; }
+#hscroll-fixed::-webkit-scrollbar-track  { background: #cfd8dc; }
+#hscroll-fixed::-webkit-scrollbar-thumb  { background: #546e7a; border-radius: 6px; border: 3px solid #cfd8dc; }
+#hscroll-fixed::-webkit-scrollbar-thumb:hover { background: #263238; }
