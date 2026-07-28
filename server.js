@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const cors = require('cors');
-const { Invoice, Payable, BankTransaction, SundryLedger } = require('./models/Finance');
+const { Invoice, Payable, BankTransaction, SundryLedger, DeletedRecord } = require('./models/Finance');
 
 const app = express();
 app.use(cors());
@@ -313,6 +313,85 @@ app.delete('/api/finance/sundry-ledger/:id', async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Failed to delete ledger" }); }
 });
 
+// ─── SOFT DELETE: SALES ───────────────────────────────────────────────────────
+app.delete('/api/finance/sales/:id', async (req, res) => {
+    try {
+        const record = await Invoice.findById(req.params.id);
+        if (!record) return res.status(404).json({ error: 'Record not found' });
+        await DeletedRecord.create({
+            originalCollection: 'Invoice',
+            originalId: req.params.id.toString(),
+            data: record.toObject(),
+            deletedAt: new Date()
+        });
+        await Invoice.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Sale moved to trash!' });
+    } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to delete sale' }); }
+});
+
+// ─── SOFT DELETE: PURCHASE ────────────────────────────────────────────────────
+app.delete('/api/finance/purchase/:id', async (req, res) => {
+    try {
+        const record = await Payable.findById(req.params.id);
+        if (!record) return res.status(404).json({ error: 'Record not found' });
+        await DeletedRecord.create({
+            originalCollection: 'Payable',
+            originalId: req.params.id.toString(),
+            data: record.toObject(),
+            deletedAt: new Date()
+        });
+        await Payable.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Purchase moved to trash!' });
+    } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to delete purchase' }); }
+});
+
+// ─── SOFT DELETE: BANK TRANSACTION ───────────────────────────────────────────
+app.delete('/api/finance/bank/:id', async (req, res) => {
+    try {
+        const record = await BankTransaction.findById(req.params.id);
+        if (!record) return res.status(404).json({ error: 'Record not found' });
+        await DeletedRecord.create({
+            originalCollection: 'BankTransaction',
+            originalId: req.params.id.toString(),
+            data: record.toObject(),
+            deletedAt: new Date()
+        });
+        await BankTransaction.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Bank transaction moved to trash!' });
+    } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to delete bank transaction' }); }
+});
+
+// ─── GET ALL DELETED RECORDS ──────────────────────────────────────────────────
+app.get('/api/finance/deleted-records', async (req, res) => {
+    try {
+        const records = await DeletedRecord.find({}).sort({ deletedAt: -1 });
+        res.json(records);
+    } catch (e) { res.status(500).json({ error: 'Failed to fetch deleted records' }); }
+});
+
+// ─── RESTORE DELETED RECORD ───────────────────────────────────────────────────
+app.post('/api/finance/restore/:id', async (req, res) => {
+    try {
+        const deleted = await DeletedRecord.findById(req.params.id);
+        if (!deleted) return res.status(404).json({ error: 'Not found in trash' });
+        const { _id, __v, ...cleanData } = deleted.data;
+        const Model = deleted.originalCollection === 'Invoice' ? Invoice
+                    : deleted.originalCollection === 'Payable'  ? Payable
+                    : BankTransaction;
+        await Model.findByIdAndUpdate(deleted.originalId, { $set: cleanData }, { upsert: true, new: true });
+        await DeletedRecord.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Record restored successfully!' });
+    } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to restore record' }); }
+});
+
+// ─── PERMANENT DELETE FROM TRASH ─────────────────────────────────────────────
+app.delete('/api/finance/trash/:id', async (req, res) => {
+    try {
+        await DeletedRecord.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Permanently deleted!' });
+    } catch (e) { res.status(500).json({ error: 'Failed to permanently delete' }); }
+});
+
 // ─── MAIN DATA API (UPDATED WITH SMART DATA MATCHING) ─────────────────────────
 
 app.get('/api/finance/all-data', async (req, res) => {
@@ -427,10 +506,89 @@ app.get('/api/finance/all-data', async (req, res) => {
             { $group: { _id: '$remarks', mtd: { $sum: '$credit' }, today: { $sum: { $cond: [ { $and: [ { $gte: ['$transactionDate', startOfDay] }, { $lte: ['$transactionDate', endOfDay] } ] }, '$credit', 0 ] } } } }
         ]);
 
+        // ── STATUTORY sub-analysis — categorises by the 'head' field ──
+        // Mapping logic (all matched case-insensitively):
+        //   SALARIES       ← head contains "salari" or "wage"
+        //   BANK CHARGES   ← head contains "bank charge", "penalty", "lc charge", "folio"
+        //   ELECTRICITY    ← head contains "electric"
+        //   LOANS          ← head contains "apsfc", "gecl", "working capital",
+        //                    "narasimha", "canara loan", or "loan"
+        //   (everything else stays in the STATUTORY total but not in a sub-row)
+        const statutorySubRaw = await BankTransaction.aggregate([
+            {
+                $match: {
+                    ...matchMTDBank,
+                    debit: { $gt: 0 },
+                    $or: [
+                        { remarks: { $regex: /^statutory$/i } },
+                        { remarks: { $regex: /^statutary$/i } }
+                    ]
+                }
+            },
+            {
+                $addFields: {
+                    subCategory: {
+                        $switch: {
+                            branches: [
+                                {
+                                    case: { $regexMatch: { input: { $ifNull: ['$head', ''] }, regex: 'salari|wage', options: 'i' } },
+                                    then: 'SALARIES'
+                                },
+                                {
+                                    case: { $regexMatch: { input: { $ifNull: ['$head', ''] }, regex: 'bank.?charge|penalty|lc.?charge|folio', options: 'i' } },
+                                    then: 'BANK CHARGES'
+                                },
+                                {
+                                    case: { $regexMatch: { input: { $ifNull: ['$head', ''] }, regex: 'electric', options: 'i' } },
+                                    then: 'ELECTRICITY BILL'
+                                },
+                                {
+                                    case: { $regexMatch: { input: { $ifNull: ['$head', ''] }, regex: 'apsfc|gecl|working.?capital|narasimha|canara.?loan|loan.?process', options: 'i' } },
+                                    then: 'LOANS'
+                                }
+                            ],
+                            default: 'OTHER'
+                        }
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: '$subCategory',
+                    mtd:   { $sum: '$debit' },
+                    today: { $sum: { $cond: [ { $and: [ { $gte: ['$transactionDate', startOfDay] }, { $lte: ['$transactionDate', endOfDay] } ] }, '$debit', 0 ] } }
+                }
+            }
+        ]);
+        const STATUTORY_SUBS = ['LOANS', 'SALARIES', 'ELECTRICITY BILL', 'BANK CHARGES'];
+        const statutorySubAnalysis = {};
+        STATUTORY_SUBS.forEach(n => { statutorySubAnalysis[n] = { today: 0, mtd: 0 }; });
+        statutorySubRaw.forEach(row => {
+            const key = (row._id || '').toUpperCase().trim();
+            if (statutorySubAnalysis[key] !== undefined) {
+                statutorySubAnalysis[key].today = row.today;
+                statutorySubAnalysis[key].mtd   = row.mtd;
+            }
+        });
+
+        // ── Opening & Closing Balance for the month ───────────────────────────
+        // FIXED: Fetch the last transaction of the PREVIOUS month to get the true opening balance
+        const lastTxOfPreviousMonth = await BankTransaction.findOne({
+            transactionDate: { $lt: startOfMonth }
+        }).sort({ transactionDate: -1 });
+
+        const lastTxOfMonth = await BankTransaction.findOne({
+            transactionDate: { $gte: startOfMonth, $lte: endOfDay }
+        }).sort({ transactionDate: -1, _id: 1 });
+
+        // openingBalance = finalBalance of last month's last transaction
+        const openingBalance = lastTxOfPreviousMonth ? (lastTxOfPreviousMonth.finalBalance || lastTxOfPreviousMonth.balance || 0) : 0;
+        const closingBalance = lastTxOfMonth  ? (lastTxOfMonth.finalBalance || lastTxOfMonth.balance || 0) : 0;
+
         res.json({
             currentDate: targetDate.toISOString().split('T')[0],
             tables: { receivables, payables, bankTransactions },
-            analysis: { salesAnalysis, purchaseAnalysis, paymentAnalysis, collectionAnalysis, oeSubAnalysis, retailSubAnalysis }
+            analysis: { salesAnalysis, purchaseAnalysis, paymentAnalysis, collectionAnalysis, oeSubAnalysis, retailSubAnalysis, statutorySubAnalysis, openingBalance, closingBalance }
         });
     } catch (error) { console.error(error); res.status(500).json({ error: "Failed to fetch data" }); }
 });

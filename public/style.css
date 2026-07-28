@@ -82,3 +82,38 @@ table.data-table tfoot { margin-top: auto; }
 #hscroll-fixed::-webkit-scrollbar-track  { background: #cfd8dc; }
 #hscroll-fixed::-webkit-scrollbar-thumb  { background: #546e7a; border-radius: 6px; border: 3px solid #cfd8dc; }
 #hscroll-fixed::-webkit-scrollbar-thumb:hover { background: #263238; }
+
+/* ── Trash/Delete button ────────────────────────────────────────────────────── */
+.btn-trash {
+    background: #fde9e7;
+    color: #e74c3c;
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    padding: 5px 9px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.2s, color 0.2s;
+    white-space: nowrap;
+}
+.btn-trash:hover { background: #e74c3c; color: #fff; }
+
+/* ── Restore button ─────────────────────────────────────────────────────────── */
+.btn-restore {
+    background: #eafaf1;
+    color: #27ae60;
+    border: 1px solid rgba(39, 174, 96, 0.3);
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: background 0.2s, color 0.2s;
+    white-space: nowrap;
+}
+.btn-restore:hover { background: #27ae60; color: #fff; }
+
+/* ── Bank Balance Summary card ──────────────────────────────────────────────── */
+.card-balance          { border-top-color: #1abc9c; }
+.card-balance h2       { color: #1abc9c; margin-bottom: 6px; }
+.card-balance .bal-tile { transition: transform 0.15s, box-shadow 0.15s; }
+.card-balance .bal-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }

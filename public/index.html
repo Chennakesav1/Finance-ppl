@@ -178,6 +178,7 @@
 
                 <li onclick="switchTab('manual')"><i class="fas fa-edit"></i> Manual Entry</li>
                 <li onclick="switchTab('upload')"><i class="fas fa-file-excel"></i> Upload MIS</li>
+                <li onclick="switchTab('trash')"><i class="fas fa-trash-alt"></i> Deleted Records</li>
                 <li onclick="logout()"
                     style="margin-top: 30px; color: #e74c3c; border-top: 1px solid #34495e; padding-top: 20px;"><i
                         class="fas fa-sign-out-alt"></i> Secure Logout</li>
@@ -281,6 +282,33 @@
                             </tfoot>
                         </table>
                     </div>
+
+                    <!-- ── Bank Balance Card (Opening / Closing) ────────────────────── -->
+                    <div class="summary-card card-balance" style="grid-column: 1 / -1;">
+                        <h2><i class="fas fa-university"></i> Bank Balance Summary (Month-to-Date)</h2>
+                        <div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:15px;">
+                            <div class="bal-tile" style="flex:1; min-width:180px; background:#eaf4fb; border-radius:10px; padding:18px 22px; border-left:5px solid #3498db;">
+                                <div style="font-size:12px; color:#7f8c8d; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">🔓 Opening Balance (MTD)</div>
+                                <div id="bank-opening-bal" style="font-size:26px; font-weight:800; color:#2c3e50; margin-top:6px;">₹0</div>
+                                <div style="font-size:11px; color:#aaa; margin-top:4px;">Balance before first tx of the month</div>
+                            </div>
+                            <div class="bal-tile" style="flex:1; min-width:180px; background:#eafaf1; border-radius:10px; padding:18px 22px; border-left:5px solid #27ae60;">
+                                <div style="font-size:12px; color:#7f8c8d; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">➕ MTD Collections</div>
+                                <div id="bank-monthly-credit" style="font-size:26px; font-weight:800; color:#27ae60; margin-top:6px;">₹0</div>
+                                <div style="font-size:11px; color:#aaa; margin-top:4px;">Total credits this month</div>
+                            </div>
+                            <div class="bal-tile" style="flex:1; min-width:180px; background:#fef9e7; border-radius:10px; padding:18px 22px; border-left:5px solid #e67e22;">
+                                <div style="font-size:12px; color:#7f8c8d; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">➖ MTD Payments</div>
+                                <div id="bank-monthly-debit" style="font-size:26px; font-weight:800; color:#e67e22; margin-top:6px;">₹0</div>
+                                <div style="font-size:11px; color:#aaa; margin-top:4px;">Total debits this month</div>
+                            </div>
+                            <div class="bal-tile" style="flex:1; min-width:180px; background:#f4f6f7; border-radius:10px; padding:18px 22px; border-left:5px solid #2c3e50;">
+                                <div style="font-size:12px; color:#7f8c8d; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">🔒 Closing Balance (MTD)</div>
+                                <div id="bank-closing-bal" style="font-size:26px; font-weight:800; color:#2c3e50; margin-top:6px;">₹0</div>
+                                <div style="font-size:11px; color:#aaa; margin-top:4px;">Balance after last tx of the month</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -300,6 +328,7 @@
                                 <th>Debit (₹)</th>
                                 <th>Credit (₹)</th>
                                 <th>Remarks</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="sales-body"></tbody>
@@ -328,6 +357,7 @@
                                 <th>Central Tax (₹)</th>
                                 <th>State/UT tax (₹)</th>
                                 <th>Remarks</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="purchase-body"></tbody>
@@ -357,6 +387,7 @@
                                 <th>Credit (₹)</th>
                                 <th>Balance (₹)</th>
                                 <th>Final Balance (₹)</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="bank-body"></tbody>
@@ -583,6 +614,34 @@
                             </tr>
                         </thead>
                         <tbody id="ledgers-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ── DELETED RECORDS (TRASH BIN) ───────────────────────────────── -->
+            <section id="trash" class="tab-content">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <h2 style="color:#c0392b;"><i class="fas fa-trash-alt"></i> Deleted Records — Trash Bin</h2>
+                        <p style="color:#7f8c8d; font-size:13px; margin-top:4px;">Soft-deleted records are saved here with date. Restore to undo, or permanently delete.</p>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table" id="trash-table">
+                        <thead style="background:#fce4e4; color:#c0392b;">
+                            <tr>
+                                <th>S.No</th>
+                                <th>Type</th>
+                                <th>Key Info</th>
+                                <th>Amount</th>
+                                <th>Original Date</th>
+                                <th>Deleted On</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trash-body">
+                            <tr><td colspan="7" style="text-align:center; color:#999; padding:40px;"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>
+                        </tbody>
                     </table>
                 </div>
             </section>

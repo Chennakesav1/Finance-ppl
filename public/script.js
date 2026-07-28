@@ -7,8 +7,9 @@ function switchTab(tabId) {
     document.querySelectorAll('.nav-links li').forEach(l => l.classList.remove('active'));
     document.getElementById(tabId).classList.add('active-tab');
     event.currentTarget.classList.add('active');
-    const titles = { 'summary':'Summary Dashboard', 'sales':'Sales Register', 'purchase':'Purchase Register', 'payments':'Payments Register', 'collections':'Collections Register', 'bank':'Bank Statement Register', 'ledgers':'Sundry Ledgers', 'manual':'Manual Entry', 'upload':'Upload Data'};
-    document.getElementById('page-title').innerText = titles[tabId];
+    const titles = { 'summary':'Summary Dashboard', 'sales':'Sales Register', 'purchase':'Purchase Register', 'payments':'Payments Register', 'collections':'Collections Register', 'bank':'Bank Statement Register', 'ledgers':'Sundry Ledgers', 'manual':'Manual Entry', 'upload':'Upload Data', 'trash':'Deleted Records (Trash Bin)' };
+    document.getElementById('page-title').innerText = titles[tabId] || '';
+    if (tabId === 'trash') loadDeletedRecords();
 }
 
 function showToast(message, isError = false) {
@@ -98,45 +99,47 @@ function getExportHTML() {
     return `
     <div style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; color: #2c3e50; padding: 0; width: 100%; box-sizing: border-box;">
         
-        <table style="width: 100%; margin-bottom: 10px; border-collapse: collapse; border: none;">
+        <table style="width: 100%; margin-bottom: 5px; border-collapse: collapse; border: none;">
             <tr>
                 <td style="width: 100px; border: none;"></td> 
                 <td style="text-align: center; vertical-align: middle; border: none;">
-                    <h2 style="color: #2c3e50; margin: 0; font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+                    <h2 style="color: #2c3e50; margin: 0; font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
                         FINANCE MIS SUMMARY
                     </h2>
-                    <p style="color: #7f8c8d; font-size: 11px; margin-top: 3px; font-weight: 600;">REPORT DATE: ${formattedDate}</p>
+                    <p style="color: #7f8c8d; font-size: 10px; margin-top: 2px; font-weight: 600;">REPORT DATE: ${formattedDate}</p>
                 </td>
                 <td style="text-align: right; vertical-align: middle; border: none; width: 100px;">
-                    <img src="logo.png" alt="Precifast Logo" style="height: 35px; object-fit: contain;" />
+                    <img src="logo.png" alt="Precifast Logo" style="height: 30px; object-fit: contain;" />
                 </td>
             </tr>
         </table>
         
-        <div style="width: 100%; height: 2px; background-color: #34495e; margin: 0 0 15px 0;"></div>
+        <!-- Reduced spacing margin below header -->
+        <div style="width: 100%; height: 2px; background-color: #34495e; margin: 0 0 10px 0;"></div>
         
         <table style="width: 100%; border-collapse: collapse; border: none; table-layout: fixed;">
             
             <tr>
                 <td style="width: 48%; vertical-align: top; border: none;">
-                    <h3 style="color: #2980b9; margin: 0 0 6px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #3498db; padding-bottom: 3px;">Sales Summary</h3>
+                    <h3 style="color: #2980b9; margin: 0 0 4px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #3498db; padding-bottom: 2px;">Sales Summary</h3>
                     ${sales}
                 </td>
                 <td style="width: 4%; border: none;"></td> <td style="width: 48%; vertical-align: top; border: none;">
-                    <h3 style="color: #d35400; margin: 0 0 6px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #e67e22; padding-bottom: 3px;">Purchases Summary</h3>
+                    <h3 style="color: #d35400; margin: 0 0 4px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #e67e22; padding-bottom: 2px;">Purchases Summary</h3>
                     ${purchases}
                 </td>
             </tr>
             
-            <tr><td colspan=\"3\" style=\"height: 25px; border: none;\"></td></tr>
+            <!-- Reduced the large empty gap between top and bottom tables -->
+            <tr><td colspan=\"3\" style=\"height: 10px; border: none;\"></td></tr>
 
             <tr>
                 <td style="width: 48%; vertical-align: top; border: none;">
-                    <h3 style="color: #8e44ad; margin: 0 0 6px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #9b59b6; padding-bottom: 3px;">Payments Summary</h3>
+                    <h3 style="color: #8e44ad; margin: 0 0 4px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #9b59b6; padding-bottom: 2px;">Payments Summary</h3>
                     ${payments}
                 </td>
                 <td style="width: 4%; border: none;"></td> <td style="width: 48%; vertical-align: top; border: none;">
-                    <h3 style="color: #27ae60; margin: 0 0 6px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #2ecc71; padding-bottom: 3px;">Collections Summary</h3>
+                    <h3 style="color: #27ae60; margin: 0 0 4px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #2ecc71; padding-bottom: 2px;">Collections Summary</h3>
                     ${collections}
                 </td>
             </tr>
@@ -153,15 +156,15 @@ const exportCSS = `
             width: 100%; 
             table-layout: fixed; 
             border-collapse: collapse; 
-            font-size: 8.5px; 
+            font-size: 7.5px; /* Reduced from 8.5px */
             font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
             border: 1px solid #dce1e6;
-            height: 215px; 
+            /* Removed the 215px fixed height so the table shrinks naturally */
         }
         
         th, td { 
             border: 1px solid #dce1e6; 
-            padding: 4px 4px; 
+            padding: 3px 3px; /* Tighter padding to save vertical space */
             word-wrap: break-word; 
             overflow-wrap: break-word;
             vertical-align: middle;
@@ -172,7 +175,7 @@ const exportCSS = `
             color: #2c3e50 !important; 
             font-weight: 800; 
             text-transform: uppercase; 
-            font-size: 7.5px; 
+            font-size: 6.5px; /* Reduced header font */
             letter-spacing: 0.1px;
             white-space: nowrap; 
         }
@@ -185,7 +188,7 @@ const exportCSS = `
         
         table.data-table td[style*="padding-left"] { 
             color: #333 !important; 
-            font-size: 8.5px !important; 
+            font-size: 7.5px !important; /* Reduced sub-row text */
             font-style: normal !important; 
             font-weight: 500;
         }
@@ -198,7 +201,7 @@ const exportCSS = `
             border-top: 1.5px solid #bdc3c7 !important;
             color: #1a252f !important; 
             white-space: nowrap !important; 
-            font-size: 10.5px !important; 
+            font-size: 9px !important; /* Reduced grand total font */
             text-transform: uppercase !important; 
         }
     </style>
@@ -209,10 +212,10 @@ function downloadPDF() {
     tempDiv.innerHTML = exportCSS + getExportHTML();
     
     html2pdf().set({ 
-        margin: 0.35, /* Tighter margins to fit more comfortably */
+        margin: 0.2, /* Reduced page margins from 0.35 to 0.2 */
         filename: `Finance_MIS_Report_${document.getElementById('date-selector').value || 'Current'}.pdf`, 
-        image: { type: 'jpeg', quality: 1 }, /* Maximum image quality */
-        html2canvas: { scale: 3, useCORS: true, letterRendering: true }, /* Scale 3 makes text ultra-crisp */
+        image: { type: 'jpeg', quality: 1 }, 
+        html2canvas: { scale: 3, useCORS: true, letterRendering: true }, 
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } 
     }).from(tempDiv).save(); 
 }
@@ -411,6 +414,17 @@ async function loadFinanceData() {
 
         // --- PAYMENTS ---
         const payCats = ['RM', 'STATUTORY', 'TOOLS /CONSU/R&M', 'SUNDRY EXP', 'FREIGHT', 'GCD', 'USL', 'OTHERS'];
+
+        // STATUTORY sub-analysis (Loans, Salaries, Electricity Bill, Bank Charges)
+        // Populated by server when bank txns have remarks=STATUTORY and name=<sub-category>
+        const statutorySubAnalysis = analysis.statutorySubAnalysis || {
+            'LOANS':            { today: 0, mtd: 0 },
+            'SALARIES':         { today: 0, mtd: 0 },
+            'ELECTRICITY BILL': { today: 0, mtd: 0 },
+            'BANK CHARGES':     { today: 0, mtd: 0 }
+        };
+        const toTitleCase = s => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+
         let payTodayTotal = 0, payMtdTotal = 0;
         let payHtml = payCats.map(cat => {
             // 💥 FIX: Filter all matching variations and sum them up
@@ -420,8 +434,28 @@ async function loadFinanceData() {
 
             const roundedToday = Math.round(totalToday);
             const roundedMtd = Math.round(totalMtd);
-            payTodayTotal += roundedToday; 
+            payTodayTotal += roundedToday;
             payMtdTotal += roundedMtd;
+
+            // ── STATUTORY: bold parent row + 4 indented sub-rows ──
+            if (cat === 'STATUTORY') {
+                const subCats = ['LOANS', 'SALARIES', 'ELECTRICITY BILL', 'BANK CHARGES'];
+                const subRows = subCats.map(sub => {
+                    const subT = Math.round(statutorySubAnalysis[sub]?.today || 0);
+                    const subM = Math.round(statutorySubAnalysis[sub]?.mtd || 0);
+                    return `<tr style="background:#faf5ff; color:#555; font-size:12px;">
+                        <td style="padding-left:28px;">↳ ${toTitleCase(sub)}</td>
+                        <td>₹${subT.toLocaleString('en-IN')}</td>
+                        <td>₹${subM.toLocaleString('en-IN')}</td>
+                    </tr>`;
+                }).join('');
+                return `<tr style="font-weight:600; background:#f5f0ff;">
+                    <td>STATUTORY</td>
+                    <td>₹${roundedToday.toLocaleString('en-IN')}</td>
+                    <td>₹${roundedMtd.toLocaleString('en-IN')}</td>
+                </tr>${subRows}`;
+            }
+
             return `<tr><td>${cat}</td><td>₹${roundedToday.toLocaleString('en-IN')}</td><td>₹${roundedMtd.toLocaleString('en-IN')}</td></tr>`;
         }).join('');
 
@@ -465,6 +499,7 @@ async function loadFinanceData() {
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'debit', 'Sales', this)" style="color:#c0392b; font-weight:bold;">₹${Math.round(inv.debit || 0).toLocaleString('en-IN')}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'credit', 'Sales', this)" style="color:#27ae60; font-weight:bold;">₹${Math.round(inv.credit || 0).toLocaleString('en-IN')}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${inv._id}', 'marketier', 'Sales', this)">${(inv.marketier || '').toUpperCase()}</td>
+                <td><button onclick="deleteRecord('${inv._id}', 'sales')" class="btn-trash" title="Move to Trash"><i class="fas fa-trash"></i></button></td>
             </tr>
         `).join('');
 
@@ -482,6 +517,7 @@ async function loadFinanceData() {
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'centralTax', 'Purchase', this)">₹${Math.round(pay.centralTax || 0).toLocaleString('en-IN')}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'stateTax', 'Purchase', this)">₹${Math.round(pay.stateTax || 0).toLocaleString('en-IN')}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${pay._id}', 'remarks', 'Purchase', this)">${(pay.remarks || '').toUpperCase()}</td>
+                <td><button onclick="deleteRecord('${pay._id}', 'purchase')" class="btn-trash" title="Move to Trash"><i class="fas fa-trash"></i></button></td>
             </tr>
         `).join('');
 
@@ -500,8 +536,15 @@ async function loadFinanceData() {
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'credit', 'Bank', this)" style="color:#27ae60; font-weight:bold;">₹${Math.round(tx.credit || 0).toLocaleString('en-IN')}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'balance', 'Bank', this)">₹${Math.round(tx.balance || 0).toLocaleString('en-IN')}</td>
                 <td class="editable-cell" contenteditable="true" onkeydown="cellKeydown(event, '${tx._id}', 'finalBalance', 'Bank', this)">₹${Math.round(tx.finalBalance || 0).toLocaleString('en-IN')}</td>
+                <td><button onclick="deleteRecord('${tx._id}', 'bank')" class="btn-trash" title="Move to Trash"><i class="fas fa-trash"></i></button></td>
             </tr>
         `).join('');
+
+        // ── Bank Balance Summary tiles ────────────────────────────────────────
+        document.getElementById('bank-opening-bal').innerText  = `₹${Math.round(analysis.openingBalance || 0).toLocaleString('en-IN')}`;
+        document.getElementById('bank-closing-bal').innerText  = `₹${Math.round(analysis.closingBalance  || 0).toLocaleString('en-IN')}`;
+        document.getElementById('bank-monthly-credit').innerText = `₹${colMtdTotal.toLocaleString('en-IN')}`;
+        document.getElementById('bank-monthly-debit').innerText  = `₹${payMtdTotal.toLocaleString('en-IN')}`;
 
     } catch (error) { console.error(error); }
 }
@@ -686,6 +729,110 @@ function exportLedgers() {
     link.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv' }));
     link.download = 'Sundry_Ledgers.csv';
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+
+// ─── DELETE / RESTORE / TRASH FUNCTIONS ──────────────────────────────────────
+
+async function deleteRecord(id, type) {
+    const label = { sales: 'Sale', purchase: 'Purchase', bank: 'Bank Transaction' };
+    if (!confirm(`Move this ${label[type] || 'record'} to Trash?\nIt will be saved with today's date and can be restored anytime.`)) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/finance/${type}/${id}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error);
+        showToast(`✅ ${label[type]} moved to Trash. Go to "Deleted Records" to restore.`);
+        loadFinanceData();
+    } catch (e) { showToast('❌ Failed to delete: ' + (e.message || ''), true); }
+}
+
+async function loadDeletedRecords() {
+    const tbody = document.getElementById('trash-body');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:40px;"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+    try {
+        const res = await fetch(`${API_BASE}/api/finance/deleted-records`);
+        const records = await res.json();
+        renderTrashTable(records);
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#e74c3c; padding:30px;">❌ Failed to load deleted records.</td></tr>';
+    }
+}
+
+function renderTrashTable(records) {
+    const tbody = document.getElementById('trash-body');
+    if (!records || records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:50px; color:#27ae60;">
+            <i class="fas fa-check-circle" style="font-size:30px; display:block; margin-bottom:10px;"></i>
+            Trash is empty — all records are intact!
+        </td></tr>`;
+        return;
+    }
+    tbody.innerHTML = records.map((rec, i) => {
+        const d = rec.data || {};
+        let typeBadge = '', keyInfo = '', amount = '', origDate = '';
+
+        if (rec.originalCollection === 'Invoice') {
+            typeBadge = `<span style="background:#ebf5fb; color:#2980b9; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; letter-spacing:0.5px;">SALE</span>`;
+            keyInfo   = d.customer || '—';
+            amount    = `<span style="color:#2980b9; font-weight:600;">₹${Math.round(d.invoiceValue || d.debit || 0).toLocaleString('en-IN')}</span>`;
+            origDate  = formatDate(d.invoiceDate);
+        } else if (rec.originalCollection === 'Payable') {
+            typeBadge = `<span style="background:#fef5e7; color:#d35400; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; letter-spacing:0.5px;">PURCHASE</span>`;
+            keyInfo   = d.vendor || '—';
+            amount    = `<span style="color:#e67e22; font-weight:600;">₹${Math.round(d.invoiceValue || d.taxableValue || 0).toLocaleString('en-IN')}</span>`;
+            origDate  = formatDate(d.matRecDate || d.invoiceDate);
+        } else {
+            typeBadge = `<span style="background:#e8f8f5; color:#16a085; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; letter-spacing:0.5px;">BANK</span>`;
+            keyInfo   = d.description || d.name || '—';
+            const cr = d.credit || 0, dr = d.debit || 0;
+            amount    = cr > 0
+                ? `<span style="color:#27ae60; font-weight:600;">+₹${Math.round(cr).toLocaleString('en-IN')}</span>`
+                : `<span style="color:#c0392b; font-weight:600;">-₹${Math.round(dr).toLocaleString('en-IN')}</span>`;
+            origDate  = formatDateTime(d.transactionDate);
+        }
+
+        const deletedOn = formatDate(rec.deletedAt);
+
+        return `<tr>
+            <td><strong>${i + 1}</strong></td>
+            <td>${typeBadge}</td>
+            <td style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${keyInfo}">${keyInfo}</td>
+            <td>${amount}</td>
+            <td style="font-size:12px;">${origDate}</td>
+            <td style="font-size:12px; color:#e74c3c;">${deletedOn}</td>
+            <td style="white-space:nowrap;">
+                <button onclick="restoreRecord('${rec._id}')" class="btn-restore" title="Restore this record">
+                    <i class="fas fa-undo"></i> Restore
+                </button>
+                <button onclick="permanentDelete('${rec._id}')" class="btn-danger" style="margin-left:5px; font-size:11px;" title="Delete forever">
+                    <i class="fas fa-times"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function restoreRecord(trashId) {
+    if (!confirm('Restore this record back to its original table?\nThe Summary Dashboard will update automatically.')) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/finance/restore/${trashId}`, { method: 'POST' });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error);
+        showToast('✅ Record restored! Summary updated.');
+        loadDeletedRecords();
+        loadFinanceData();
+    } catch (e) { showToast('❌ Failed to restore: ' + (e.message || ''), true); }
+}
+
+async function permanentDelete(trashId) {
+    if (!confirm('⚠️ Permanently delete this record?\nThis action CANNOT be undone!')) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/finance/trash/${trashId}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error);
+        showToast('🗑️ Record permanently deleted.');
+        loadDeletedRecords();
+    } catch (e) { showToast('❌ Failed to permanently delete: ' + (e.message || ''), true); }
 }
 
 document.addEventListener('DOMContentLoaded', () => { document.getElementById('date-selector').value = ''; loadFinanceData(); loadSundryLedgers(); });

@@ -47,9 +47,18 @@ const sundryLedgerSchema = new mongoose.Schema({
     extra:       { type: String }
 }, { timestamps: true });
 
+// ── Soft-Delete Trash Bin ─────────────────────────────────────────────────────
+const deletedRecordSchema = new mongoose.Schema({
+    originalCollection: { type: String, required: true },   // 'Invoice' | 'Payable' | 'BankTransaction'
+    originalId:         { type: String, required: true },
+    data:               { type: mongoose.Schema.Types.Mixed, required: true },
+    deletedAt:          { type: Date, default: Date.now }
+});
+
 module.exports = {
-    Invoice:        mongoose.model('Invoice', invoiceSchema),
-    Payable:        mongoose.model('Payable', payableSchema),
+    Invoice:         mongoose.model('Invoice', invoiceSchema),
+    Payable:         mongoose.model('Payable', payableSchema),
     BankTransaction: mongoose.model('BankTransaction', bankTransactionSchema),
-    SundryLedger:   mongoose.model('SundryLedger', sundryLedgerSchema)
+    SundryLedger:    mongoose.model('SundryLedger', sundryLedgerSchema),
+    DeletedRecord:   mongoose.model('DeletedRecord', deletedRecordSchema)
 };
