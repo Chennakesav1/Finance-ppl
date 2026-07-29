@@ -91,59 +91,72 @@ function getExportHTML() {
     const [year, month, day] = rawDate.split('-');
     const formattedDate = `${day}-${month}-${year}`;
 
-    const sales = document.getElementById('sales-summary-table').outerHTML;
-    const purchases = document.getElementById('purchase-summary-table').outerHTML;
-    const payments = document.getElementById('payments-summary-table').outerHTML;
+    const sales       = document.getElementById('sales-summary-table').outerHTML;
+    const purchases   = document.getElementById('purchase-summary-table').outerHTML;
+    const payments    = document.getElementById('payments-summary-table').outerHTML;
     const collections = document.getElementById('collections-summary-table').outerHTML;
 
-    return `
-    <div style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; color: #2c3e50; padding: 0; width: 100%; box-sizing: border-box;">
-        
-        <table style="width: 100%; margin-bottom: 5px; border-collapse: collapse; border: none;">
-            <tr>
-                <td style="width: 100px; border: none;"></td> 
-                <td style="text-align: center; vertical-align: middle; border: none;">
-                    <h2 style="color: #2c3e50; margin: 0; font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
-                        FINANCE MIS SUMMARY
-                    </h2>
-                    <p style="color: #7f8c8d; font-size: 10px; margin-top: 2px; font-weight: 600;">REPORT DATE: ${formattedDate}</p>
-                </td>
-                <td style="text-align: right; vertical-align: middle; border: none; width: 100px;">
-                    <img src="logo.png" alt="Precifast Logo" style="height: 30px; object-fit: contain;" />
-                </td>
-            </tr>
-        </table>
-        
-        <!-- Reduced spacing margin below header -->
-        <div style="width: 100%; height: 2px; background-color: #34495e; margin: 0 0 10px 0;"></div>
-        
-        <table style="width: 100%; border-collapse: collapse; border: none; table-layout: fixed;">
-            
-            <tr>
-                <td style="width: 48%; vertical-align: top; border: none;">
-                    <h3 style="color: #2980b9; margin: 0 0 4px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #3498db; padding-bottom: 2px;">Sales Summary</h3>
-                    ${sales}
-                </td>
-                <td style="width: 4%; border: none;"></td> <td style="width: 48%; vertical-align: top; border: none;">
-                    <h3 style="color: #d35400; margin: 0 0 4px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #e67e22; padding-bottom: 2px;">Purchases Summary</h3>
-                    ${purchases}
-                </td>
-            </tr>
-            
-            <!-- Reduced the large empty gap between top and bottom tables -->
-            <tr><td colspan=\"3\" style=\"height: 10px; border: none;\"></td></tr>
+    const openingBal = document.getElementById('bank-opening-bal')?.innerText || '₹0';
+    const closingBal = document.getElementById('bank-closing-bal')?.innerText  || '₹0';
 
+    return `
+    <div style="font-family:'Segoe UI',Tahoma,Arial,sans-serif; color:#2c3e50; padding:0; width:100%; box-sizing:border-box;">
+
+        <!-- Header -->
+        <table style="width:100%; margin-bottom:1px; border-collapse:collapse; border:none;">
             <tr>
-                <td style="width: 48%; vertical-align: top; border: none;">
-                    <h3 style="color: #8e44ad; margin: 0 0 4px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #9b59b6; padding-bottom: 2px;">Payments Summary</h3>
-                    ${payments}
+                <td style="width:36px; border:none;"></td>
+                <td style="text-align:center; vertical-align:middle; border:none;">
+                    <h2 style="color:#2c3e50; margin:0; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">FINANCE MIS SUMMARY</h2>
+                    <p style="color:#7f8c8d; font-size:8px; margin-top:1px; font-weight:600;">REPORT DATE: ${formattedDate}</p>
                 </td>
-                <td style="width: 4%; border: none;"></td> <td style="width: 48%; vertical-align: top; border: none;">
-                    <h3 style="color: #27ae60; margin: 0 0 4px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #2ecc71; padding-bottom: 2px;">Collections Summary</h3>
-                    ${collections}
+                <td style="text-align:right; vertical-align:middle; border:none; width:36px;">
+                    <img src="logo.png" alt="Precifast Logo" style="height:13px; object-fit:contain;" />
                 </td>
             </tr>
         </table>
+
+        <div style="width:100%; height:1px; background-color:#34495e; margin:0 0 2px 0;"></div>
+
+        <!-- 2x2 equal-height grid: Sales & Purchases on row 1, Payments & Collections on row 2 -->
+        <div class="pdf-grid">
+            <div class="pdf-cell">
+                <h3 style="color:#2980b9; border-bottom:1px solid #3498db; background:#f0f7ff;">Sales Summary</h3>
+                ${sales}
+            </div>
+            <div class="pdf-cell">
+                <h3 style="color:#d35400; border-bottom:1px solid #e67e22; background:#fff8f0;">Purchases Summary</h3>
+                ${purchases}
+            </div>
+            <div class="pdf-cell">
+                <h3 style="color:#8e44ad; border-bottom:1px solid #9b59b6; background:#faf0ff;">Payments Summary</h3>
+                ${payments}
+            </div>
+            <div class="pdf-cell">
+                <h3 style="color:#27ae60; border-bottom:1px solid #2ecc71; background:#f0fff4;">Collections Summary</h3>
+                ${collections}
+            </div>
+        </div>
+
+        <!-- Bank Balance Summary -->
+        <div style="border:1px solid #d6eaf8; border-radius:3px; overflow:hidden;">
+            <h3 style="color:#1abc9c; margin:0; padding:2px 5px; font-size:8px; font-weight:700; text-transform:uppercase; border-bottom:1px solid #1abc9c; background:#f0fdf9; letter-spacing:0.3px;">🏦 Bank Balance Summary (Month-to-Date)</h3>
+            <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+                <tr>
+                    <td style="width:49%; padding:3px 6px; background:#eaf4fb; border-right:1px solid #d6eaf8; border-left:2px solid #3498db;">
+                        <div style="font-size:7px; color:#7f8c8d; font-weight:700; text-transform:uppercase; letter-spacing:0.3px;">🔓 Opening Balance (MTD)</div>
+                        <div style="font-size:11px; font-weight:800; color:#2c3e50; margin-top:1px;">${openingBal}</div>
+                        <div style="font-size:6.5px; color:#aaa; margin-top:1px;">Balance before first transaction of the month</div>
+                    </td>
+                    <td style="width:2%; border:none;"></td>
+                    <td style="width:49%; padding:3px 6px; background:#f4f6f7; border-left:2px solid #2c3e50;">
+                        <div style="font-size:7px; color:#7f8c8d; font-weight:700; text-transform:uppercase; letter-spacing:0.3px;">🔒 Closing Balance (MTD)</div>
+                        <div style="font-size:11px; font-weight:800; color:#2c3e50; margin-top:1px;">${closingBal}</div>
+                        <div style="font-size:6.5px; color:#aaa; margin-top:1px;">Balance after last transaction of the month</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
     </div>
     `;
 }
@@ -151,58 +164,88 @@ function getExportHTML() {
 const exportCSS = `
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        table.data-table { 
-            width: 100%; 
-            table-layout: fixed; 
-            border-collapse: collapse; 
-            font-size: 7.5px; /* Reduced from 8.5px */
+
+        table.data-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            font-size: 8.5px;
             font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
             border: 1px solid #dce1e6;
-            /* Removed the 215px fixed height so the table shrinks naturally */
+            height: 100%;
         }
-        
-        th, td { 
-            border: 1px solid #dce1e6; 
-            padding: 3px 3px; /* Tighter padding to save vertical space */
-            word-wrap: break-word; 
+
+        th, td {
+            border: 1px solid #dce1e6;
+            padding: 1px 2px;
+            word-wrap: break-word;
             overflow-wrap: break-word;
             vertical-align: middle;
+            line-height: 1.2;
         }
-        
-        th { 
-            background-color: #f0f4f8 !important; 
-            color: #2c3e50 !important; 
-            font-weight: 800; 
-            text-transform: uppercase; 
-            font-size: 6.5px; /* Reduced header font */
+
+        th {
+            background-color: #f0f4f8 !important;
+            color: #2c3e50 !important;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 7px;
             letter-spacing: 0.1px;
-            white-space: nowrap; 
+            white-space: nowrap;
         }
 
         table.data-table th:nth-child(1), table.data-table td:nth-child(1) { width: 42%; text-align: left; }
-        table.data-table th:nth-child(2), table.data-table td:nth-child(2) { width: 29%; text-align: right; white-space: nowrap; } 
+        table.data-table th:nth-child(2), table.data-table td:nth-child(2) { width: 29%; text-align: right; white-space: nowrap; }
         table.data-table th:nth-child(3), table.data-table td:nth-child(3) { width: 29%; text-align: right; white-space: nowrap; }
 
         table.data-table tr:nth-child(even) td { background-color: #f9fbfd !important; }
-        
-        table.data-table td[style*="padding-left"] { 
-            color: #333 !important; 
-            font-size: 7.5px !important; /* Reduced sub-row text */
-            font-style: normal !important; 
-            font-weight: 500;
+
+        /* ── Sub-rows: ↳ Bajaj, ↳ Gabriel India Limited, ↳ Loans, etc. ── */
+        table.data-table td[style*="padding-left"] {
+            color: #444 !important;
+            font-size: 8px !important;
+            font-style: normal !important;
+            font-weight: 600 !important;
         }
 
-        /* 🔥 STRICT GRAND TOTAL RULES 🔥 */
+        /* ── Grand Total footer ── */
         table.data-table tfoot th,
         table.data-table tfoot td {
-            font-weight: 900 !important;
+            font-weight: 800 !important;
             background-color: #eef2f5 !important;
-            border-top: 1.5px solid #bdc3c7 !important;
-            color: #1a252f !important; 
-            white-space: nowrap !important; 
-            font-size: 9px !important; /* Reduced grand total font */
-            text-transform: uppercase !important; 
+            border-top: 1px solid #bdc3c7 !important;
+            color: #1a252f !important;
+            white-space: nowrap !important;
+            font-size: 9px !important;
+            text-transform: uppercase !important;
+        }
+
+        /* ── Equal-height 2x2 grid for the 4 summary tables ── */
+        .pdf-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 3px;
+            margin-bottom: 3px;
+        }
+        .pdf-cell {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #dce1e6;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .pdf-cell h3 {
+            margin: 0;
+            padding: 2px 4px;
+            font-size: 7.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            flex-shrink: 0;
+            letter-spacing: 0.3px;
+        }
+        .pdf-cell table.data-table {
+            flex: 1;
         }
     </style>
 `;
@@ -212,10 +255,10 @@ function downloadPDF() {
     tempDiv.innerHTML = exportCSS + getExportHTML();
     
     html2pdf().set({ 
-        margin: 0.2, /* Reduced page margins from 0.35 to 0.2 */
+        margin: [0.1, 0.12, 0.1, 0.12],
         filename: `Finance_MIS_Report_${document.getElementById('date-selector').value || 'Current'}.pdf`, 
         image: { type: 'jpeg', quality: 1 }, 
-        html2canvas: { scale: 3, useCORS: true, letterRendering: true }, 
+        html2canvas: { scale: 2.5, useCORS: true, letterRendering: true }, 
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } 
     }).from(tempDiv).save(); 
 }
@@ -228,7 +271,7 @@ function downloadWord() {
             <title>Summary Report</title>
             ${exportCSS}
             <style>
-                @page { size: A4 portrait; margin: 0.4in; }
+                @page { size: A4 landscape; margin: 0.2in; }
             </style>
         </head>
         <body>${getExportHTML()}</body>
@@ -543,8 +586,7 @@ async function loadFinanceData() {
         // ── Bank Balance Summary tiles ────────────────────────────────────────
         document.getElementById('bank-opening-bal').innerText  = `₹${Math.round(analysis.openingBalance || 0).toLocaleString('en-IN')}`;
         document.getElementById('bank-closing-bal').innerText  = `₹${Math.round(analysis.closingBalance  || 0).toLocaleString('en-IN')}`;
-        document.getElementById('bank-monthly-credit').innerText = `₹${colMtdTotal.toLocaleString('en-IN')}`;
-        document.getElementById('bank-monthly-debit').innerText  = `₹${payMtdTotal.toLocaleString('en-IN')}`;
+
 
     } catch (error) { console.error(error); }
 }
@@ -879,7 +921,7 @@ function dropdownChange(id, field, type, selectElement) {
 }
 
 
-// ── FIXED scrollbar pinned to bottom of browser window ──
+// ── FIXED scrollbar always pinned to bottom of browser window ──
 (function () {
 
     // Build the bar and inject into body
@@ -891,7 +933,7 @@ function dropdownChange(id, field, type, selectElement) {
     let activeWrapper = null;
     let syncing = false;
 
-    // Drag bar → scroll table
+    // Drag fixed bar → scroll the real table wrapper
     bar.addEventListener('scroll', () => {
         if (syncing || !activeWrapper) return;
         syncing = true;
@@ -899,20 +941,31 @@ function dropdownChange(id, field, type, selectElement) {
         syncing = false;
     });
 
-    function setActiveWrapper(wrapper) {
+    function attachToWrapper(wrapper) {
         activeWrapper = wrapper;
+        const inner = document.getElementById('hscroll-fixed-inner');
         const scrollable = wrapper.scrollWidth - wrapper.clientWidth;
-        if (scrollable < 5) { bar.style.display = 'none'; return; }
-        document.getElementById('hscroll-fixed-inner').style.width = wrapper.scrollWidth + 'px';
+
+        if (scrollable < 5) {
+            bar.style.display = 'none';
+            return;
+        }
+
+        inner.style.width = wrapper.scrollWidth + 'px';
         bar.scrollLeft = wrapper.scrollLeft;
         bar.style.display = 'block';
+    }
+
+    function detachBar() {
+        activeWrapper = null;
+        bar.style.display = 'none';
     }
 
     function hookWrapper(wrapper) {
         if (wrapper._hscrollHooked) return;
         wrapper._hscrollHooked = true;
 
-        // Table scrolled → move bar thumb
+        // Keep fixed bar thumb in sync when user scrolls the real wrapper
         wrapper.addEventListener('scroll', () => {
             if (syncing) return;
             syncing = true;
@@ -920,27 +973,71 @@ function dropdownChange(id, field, type, selectElement) {
             syncing = false;
         });
 
-        // Watch when this table enters the visible viewport
-        new IntersectionObserver((entries) => {
-            entries.forEach(e => { if (e.isIntersecting) setActiveWrapper(wrapper); });
-        }, { threshold: 0.05 }).observe(wrapper);
-
-        // Watch if table data changes (more rows loaded)
+        // Update bar width if table content changes (rows added/removed)
         new MutationObserver(() => {
-            if (activeWrapper === wrapper) setActiveWrapper(wrapper);
+            if (activeWrapper === wrapper) attachToWrapper(wrapper);
         }).observe(wrapper, { childList: true, subtree: true });
     }
 
-    function init() {
-        document.querySelectorAll('.table-wrapper').forEach(hookWrapper);
+    // ── Core: find the visible table-wrapper in the active tab and attach ──
+    function refreshActiveWrapper() {
+        // The active tab section
+        const activeSection = document.querySelector('.tab-content.active-tab');
+        if (!activeSection) { detachBar(); return; }
+
+        // All .table-wrapper elements inside the active tab
+        const wrappers = activeSection.querySelectorAll('.table-wrapper');
+        if (!wrappers.length) { detachBar(); return; }
+
+        // Pick the first wrapper that contains a table
+        let chosen = null;
+        wrappers.forEach(w => {
+            if (!chosen && w.querySelector('table')) chosen = w;
+        });
+
+        if (!chosen) { detachBar(); return; }
+
+        // Use the inner table's natural scrollWidth so we catch
+        // cases where the table fits on wide screens but still
+        // benefits from a fixed bar (Sales has 8 cols, fits at 1920px
+        // but overflows at 1366px — bar should always be ready)
+        const table = chosen.querySelector('table');
+        const tableNaturalWidth = table ? table.scrollWidth : chosen.scrollWidth;
+        const wrapperWidth = chosen.clientWidth;
+
+        // Always show bar if table is wider than its wrapper by any amount,
+        // OR if the table has more than 5 columns (Sales, Purchase, Bank etc.)
+        const cols = chosen.querySelectorAll('thead th').length;
+        if (tableNaturalWidth > wrapperWidth || cols > 5) {
+            hookWrapper(chosen);
+            attachToWrapper(chosen);
+        } else {
+            detachBar();
+        }
     }
 
-    // Re-run init after every data load
+    function init() {
+        // Hook all wrappers so their scroll events stay in sync
+        document.querySelectorAll('.table-wrapper').forEach(hookWrapper);
+        refreshActiveWrapper();
+    }
+
+    // Re-run whenever a tab is switched
+    const _origSwitch = window.switchTab;
+    window.switchTab = function (...a) {
+        _origSwitch.apply(this, a);
+        setTimeout(refreshActiveWrapper, 100);
+    };
+
+    // Re-run after every data load
     const _orig = loadFinanceData;
     loadFinanceData = async function (...a) {
         await _orig.apply(this, a);
         setTimeout(init, 300);
     };
+
+    // Also refresh on window resize (bar left offset depends on sidebar width)
+    window.addEventListener('resize', refreshActiveWrapper);
 
     document.addEventListener('DOMContentLoaded', () => setTimeout(init, 500));
 })();

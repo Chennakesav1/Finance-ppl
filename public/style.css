@@ -67,21 +67,22 @@ table.data-table tfoot { margin-top: auto; }
     bottom: 0;
     left: 250px;          /* right after sidebar */
     right: 0;
-    height: 16px;
+    height: 20px;
     overflow-x: scroll;
     overflow-y: hidden;
-    background: #cfd8dc;
-    border-top: 2px solid #90a4ae;
+    background: #e8edf0;
+    border-top: 2px solid #3498db;
     z-index: 9999;
     display: none;        /* hidden until a wide table is visible */
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.12);
 }
 #hscroll-fixed-inner {
     height: 1px;
 }
-#hscroll-fixed::-webkit-scrollbar        { height: 16px; }
-#hscroll-fixed::-webkit-scrollbar-track  { background: #cfd8dc; }
-#hscroll-fixed::-webkit-scrollbar-thumb  { background: #546e7a; border-radius: 6px; border: 3px solid #cfd8dc; }
-#hscroll-fixed::-webkit-scrollbar-thumb:hover { background: #263238; }
+#hscroll-fixed::-webkit-scrollbar        { height: 20px; }
+#hscroll-fixed::-webkit-scrollbar-track  { background: #e8edf0; }
+#hscroll-fixed::-webkit-scrollbar-thumb  { background: #3498db; border-radius: 8px; border: 4px solid #e8edf0; }
+#hscroll-fixed::-webkit-scrollbar-thumb:hover { background: #1a6fa8; }
 
 /* ── Trash/Delete button ────────────────────────────────────────────────────── */
 .btn-trash {
