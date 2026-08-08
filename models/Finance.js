@@ -55,10 +55,20 @@ const deletedRecordSchema = new mongoose.Schema({
     deletedAt:          { type: Date, default: Date.now }
 });
 
+// ── Cash Flow Planner (PIN-protected, auto-saved) ─────────────────────────────
+const cashFlowSchema = new mongoose.Schema({
+    name:           { type: String, default: 'default', unique: true },
+    data:           { type: mongoose.Schema.Types.Mixed },   // Full DATA object from cashflow.html
+    openingBal:     { type: Number, default: 5 },
+    startMonthIdx:  { type: Number, default: 0 },
+    updatedAt:      { type: Date, default: Date.now }
+});
+
 module.exports = {
     Invoice:         mongoose.model('Invoice', invoiceSchema),
     Payable:         mongoose.model('Payable', payableSchema),
     BankTransaction: mongoose.model('BankTransaction', bankTransactionSchema),
     SundryLedger:    mongoose.model('SundryLedger', sundryLedgerSchema),
-    DeletedRecord:   mongoose.model('DeletedRecord', deletedRecordSchema)
+    DeletedRecord:   mongoose.model('DeletedRecord', deletedRecordSchema),
+    CashFlow:        mongoose.model('CashFlow', cashFlowSchema)
 };

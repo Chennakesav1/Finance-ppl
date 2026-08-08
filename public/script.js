@@ -1,4 +1,8 @@
 function logout() { localStorage.removeItem('precifast_auth'); window.location.href = "login.html"; }
+
+function openCashFlow() {
+    window.open('cashflow.html', '_blank');
+}
 const API_BASE = '';
 let vendorDetails = {};
 

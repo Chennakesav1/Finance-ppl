@@ -1,0 +1,3037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cash Flow Planner · Precifast Finance</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f1f5f9;
+    color: #1e293b;
+    font-size: 12px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: linear-gradient(135deg, #1e1b4b 0%, #3730a3 100%);
+    color: #e0e7ff;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .header h1 { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+  .header p  { font-size: 11px; color: #a5b4fc; margin-top: 2px; }
+
+  /* ── OPENING BALANCE BAR ── */
+  .top-bar {
+    background: #eef2ff;
+    border-bottom: 2px solid #c7d2fe;
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .top-bar label { font-weight: 700; color: #1e1b4b; font-size: 13px; }
+  .top-bar input {
+    width: 80px; padding: 4px 8px;
+    border: 1px solid #6366f1; border-radius: 5px;
+    background: #fff; color: #1e1b4b; font-size: 13px;
+    text-align: right;
+  }
+  .top-bar .hint {
+    font-size: 11px; color: #475569; margin-left: 8px;
+  }
+  .top-bar .hint span { font-weight: 600; }
+
+  /* ── TABLE WRAPPER ── */
+  .table-wrap {
+    overflow-x: auto;
+    padding: 16px 12px 0;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 1300px;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 6px rgba(0,0,0,.08);
+  }
+
+  /* ── HEADER ROW ── */
+  thead th {
+    background: #1e1b4b;
+    color: #e0e7ff;
+    padding: 8px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+  }
+  thead th:nth-child(1) { min-width: 88px; text-align: left; padding-left: 10px; }
+  thead th:nth-child(2) { min-width: 168px; text-align: left; padding-left: 6px; }
+  thead th:nth-child(3) { min-width: 56px; }
+  thead th:nth-child(n+4) { min-width: 72px; }
+
+  /* ── SECTION HEADER ROW ── */
+  tr.section-header td {
+    background: #312e81;
+    color: #a5b4fc;
+    font-weight: 700;
+    font-size: 10.5px;
+    padding: 6px 10px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    border-top: 3px solid #1e1b4b;
+  }
+
+  /* ── BODY ROWS ── */
+  tbody tr td {
+    padding: 3px 5px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  tbody tr:hover td { background: #f8fafc; }
+
+  .col-cat {
+    font-size: 10px; color: #94a3b8;
+    font-style: italic; padding-left: 10px;
+    min-width: 88px;
+  }
+  .col-label {
+    font-size: 11px; min-width: 168px; padding-left: 6px;
+  }
+  .col-pct { text-align: center; min-width: 56px; }
+  .col-val { text-align: right; min-width: 72px; padding-right: 6px; }
+
+  /* ── ROW TYPES ── */
+  tr.row-total td         { background: #eff6ff; font-weight: 700; border-top: 2px solid #6366f1; }
+  tr.row-opening td       { background: #dbeafe; font-weight: 700; }
+  tr.row-closing td       { background: #dbeafe; font-weight: 700; border-top: 2px solid #3b82f6; }
+  tr.row-total-out td     { background: #fee2e2; font-weight: 700; border-top: 2px solid #ef4444; }
+  tr.row-avail td         { background: #d1fae5; font-weight: 700; border-top: 2px solid #10b981; }
+  tr.row-subtotal td      { background: #fef3c7; font-weight: 700; border-top: 2px solid #f59e0b; }
+  tr.row-pct td           { background: #fdf4ff; }
+  tr.row-input td         { background: #fff; }
+  tr.row-input-hi td      { background: #eff6ff; }
+
+  /* ── CELLS ── */
+  .val-neg  { color: #dc2626 !important; font-weight: 700; }
+  .val-pos  { color: #16a34a !important; }
+  .val-pct  { color: #7e22ce !important; font-weight: 600; }
+  .val-blue { color: #1d4ed8 !important; }
+  .val-green{ color: #059669 !important; }
+  .val-red  { color: #b91c1c !important; }
+
+  /* ── INPUTS ── */
+  input.cell-input {
+    width: 64px; padding: 2px 4px;
+    border: 1px solid #6366f1;
+    border-radius: 4px;
+    background: #eef2ff;
+    color: #1e1b4b;
+    font-size: 11px;
+    text-align: right;
+    outline: none;
+  }
+  input.cell-input:focus {
+    border-color: #4f46e5;
+    background: #e0e7ff;
+    box-shadow: 0 0 0 2px #c7d2fe;
+  }
+  input.pct-input {
+    width: 50px; padding: 2px 4px;
+    border: 1px solid #a855f7;
+    border-radius: 4px;
+    background: #fae8ff;
+    color: #7e22ce;
+    font-size: 11px;
+    text-align: center;
+    outline: none;
+    font-weight: 600;
+  }
+  input.pct-input:focus {
+    border-color: #9333ea;
+    box-shadow: 0 0 0 2px #e9d5ff;
+  }
+
+  /* ═══════════════════════════════════════════
+     ANALYTICS DASHBOARD
+  ═══════════════════════════════════════════ */
+  .analytics-section {
+    padding: 20px 16px 32px;
+  }
+
+  .analytics-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e0e7ff;
+  }
+  .analytics-header h2 {
+    font-size: 16px;
+    font-weight: 800;
+    color: #1e1b4b;
+    letter-spacing: -0.3px;
+  }
+  .analytics-header span {
+    font-size: 11px;
+    color: #6366f1;
+    background: #eef2ff;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+
+  /* KPI Cards */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .kpi-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.07);
+    border-left: 4px solid #6366f1;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card.green  { border-left-color: #10b981; }
+  .kpi-card.red    { border-left-color: #ef4444; }
+  .kpi-card.amber  { border-left-color: #f59e0b; }
+  .kpi-card.indigo { border-left-color: #6366f1; }
+  .kpi-card .kpi-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #64748b;
+    margin-bottom: 6px;
+  }
+  .kpi-card .kpi-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1;
+  }
+  .kpi-card .kpi-value.pos { color: #059669; }
+  .kpi-card .kpi-value.neg { color: #dc2626; }
+  .kpi-card .kpi-sub {
+    font-size: 10px;
+    color: #94a3b8;
+    margin-top: 4px;
+  }
+  .kpi-card .kpi-badge {
+    position: absolute;
+    top: 10px; right: 10px;
+    font-size: 18px;
+    opacity: 0.2;
+  }
+
+  /* Charts Grid */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .charts-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .chart-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.07);
+  }
+  .chart-card h3 {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e1b4b;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chart-card h3 .badge {
+    font-size: 10px;
+    font-weight: 600;
+    background: #eef2ff;
+    color: #6366f1;
+    padding: 2px 6px;
+    border-radius: 8px;
+    margin-left: auto;
+  }
+
+  /* SVG Chart Styles */
+  .chart-svg { width: 100%; overflow: visible; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: #475569;
+    font-weight: 600;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* Waterfall / Trend Table */
+  .trend-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  .trend-table th {
+    text-align: left;
+    padding: 5px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #94a3b8;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .trend-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+  }
+  .trend-table tr:hover td { background: #f8fafc; }
+  .trend-table .bar-cell { width: 100px; }
+  .mini-bar {
+    height: 14px;
+    border-radius: 3px;
+    min-width: 2px;
+    transition: width 0.3s ease;
+  }
+
+  /* Donut chart container */
+  .donut-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .donut-legend {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .donut-legend-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #475569;
+  }
+  .donut-legend-item .dl-name {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 600;
+  }
+  .donut-legend-item .dl-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .donut-legend-item .dl-val {
+    font-weight: 700;
+    color: #1e293b;
+  }
+
+  /* Month analysis rows */
+  .month-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .month-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: background 0.15s;
+  }
+  .month-row:hover { background: #f8fafc; }
+  .month-row .mr-name {
+    font-size: 10px;
+    font-weight: 700;
+    color: #475569;
+    width: 50px;
+    flex-shrink: 0;
+  }
+  .month-row .mr-bar-wrap {
+    flex: 1;
+    height: 16px;
+    background: #f1f5f9;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .month-row .mr-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+  .month-row .mr-val {
+    font-size: 10px;
+    font-weight: 700;
+    width: 52px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .mr-val.pos { color: #059669; }
+  .mr-val.neg { color: #dc2626; }
+
+  /* Variance highlight */
+  .variance-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .vp-up   { background: #dcfce7; color: #15803d; }
+  .vp-down { background: #fee2e2; color: #b91c1c; }
+
+  /* ═══════════════════════════════════════════
+     SCENARIO ENGINE
+  ═══════════════════════════════════════════ */
+  .scenario-section {
+    padding: 0 16px 32px;
+  }
+  .section-divider {
+    display: flex; align-items: center; gap: 12px;
+    padding: 20px 0 16px;
+    border-top: 2px solid #e0e7ff;
+  }
+  .section-divider h2 {
+    font-size: 16px; font-weight: 800; color: #1e1b4b; letter-spacing: -0.3px; white-space: nowrap;
+  }
+  .section-divider .sdiv-line { flex:1; height:1px; background:#e0e7ff; }
+  .section-divider span {
+    font-size: 11px; color: #6366f1; background: #eef2ff;
+    padding: 3px 8px; border-radius: 12px; font-weight: 600; white-space: nowrap;
+  }
+
+  /* Scenario tabs */
+  .scenario-tabs {
+    display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .stab {
+    padding: 7px 16px; border-radius: 8px; border: 2px solid #e0e7ff;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    background: #fff; color: #64748b; transition: all 0.15s;
+  }
+  .stab:hover { border-color: #6366f1; color: #4f46e5; }
+  .stab.active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+
+  .scenario-panel { display: none; }
+  .scenario-panel.active { display: block; }
+
+  /* Scenario comparison 3-col */
+  .scenario-3col {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px;
+  }
+  .scen-card {
+    background: #fff; border-radius: 10px; padding: 16px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.07);
+    border-top: 4px solid #6366f1;
+  }
+  .scen-card.best  { border-top-color: #10b981; }
+  .scen-card.base  { border-top-color: #6366f1; }
+  .scen-card.worst { border-top-color: #ef4444; }
+  .scen-card h4 {
+    font-size: 13px; font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  }
+  .scen-card h4.best  { color: #059669; }
+  .scen-card h4.base  { color: #4f46e5; }
+  .scen-card h4.worst { color: #dc2626; }
+  .scen-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 0; border-bottom: 1px solid #f1f5f9; font-size: 11px;
+  }
+  .scen-row:last-child { border-bottom: none; }
+  .scen-row .sr-label { color: #64748b; font-weight: 600; }
+  .scen-row .sr-val { font-weight: 800; }
+  .scen-row .sr-val.pos { color: #059669; }
+  .scen-row .sr-val.neg { color: #dc2626; }
+  .scen-row .sr-val.blue { color: #4f46e5; }
+  .scen-assumptions {
+    background: #f8fafc; border-radius: 8px; padding: 10px 14px;
+    font-size: 10.5px; color: #64748b; line-height: 1.7;
+    border-left: 3px solid #cbd5e1; margin-bottom: 12px;
+  }
+  .scen-assumptions strong { color: #1e293b; }
+  .scen-chart-wrap { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 6px rgba(0,0,0,.07); }
+  .scen-chart-wrap h4 { font-size: 12px; font-weight: 700; color: #1e1b4b; margin-bottom: 12px; }
+
+  /* What-if sliders */
+  .whatif-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;
+  }
+  .slider-card {
+    background: #fff; border-radius: 10px; padding: 16px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.07);
+  }
+  .slider-card h4 { font-size: 12px; font-weight: 700; color: #1e1b4b; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+  .slider-item { margin-bottom: 14px; }
+  .slider-item:last-child { margin-bottom: 0; }
+  .slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .slider-label { font-size: 11px; font-weight: 700; color: #475569; }
+  .slider-val-badge {
+    font-size: 12px; font-weight: 800; padding: 2px 8px;
+    border-radius: 6px; background: #eef2ff; color: #4f46e5; min-width: 52px; text-align: center;
+  }
+  .slider-val-badge.neg { background: #fee2e2; color: #dc2626; }
+  .slider-val-badge.pos { background: #dcfce7; color: #15803d; }
+  input[type=range].wi-slider {
+    width: 100%; height: 6px; -webkit-appearance: none; appearance: none;
+    background: #e2e8f0; border-radius: 3px; outline: none; cursor: pointer;
+  }
+  input[type=range].wi-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #4f46e5; cursor: pointer; border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  }
+  input[type=range].wi-slider.red::-webkit-slider-thumb { background: #ef4444; }
+  input[type=range].wi-slider.green::-webkit-slider-thumb { background: #10b981; }
+  input[type=range].wi-slider.amber::-webkit-slider-thumb { background: #f59e0b; }
+  .slider-hint { font-size: 10px; color: #94a3b8; margin-top: 3px; }
+
+  .whatif-impact {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;
+  }
+  .wi-impact-card {
+    background: #fff; border-radius: 10px; padding: 12px 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    border-left: 3px solid #6366f1; text-align: center;
+  }
+  .wi-impact-card.red   { border-left-color: #ef4444; }
+  .wi-impact-card.green { border-left-color: #10b981; }
+  .wi-impact-card.amber { border-left-color: #f59e0b; }
+  .wi-impact-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: 4px; }
+  .wi-impact-val   { font-size: 18px; font-weight: 800; color: #1e293b; }
+  .wi-impact-val.pos { color: #059669; }
+  .wi-impact-val.neg { color: #dc2626; }
+  .wi-impact-delta { font-size: 10px; margin-top: 2px; }
+  .wi-impact-delta.pos { color: #15803d; }
+  .wi-impact-delta.neg { color: #b91c1c; }
+
+  /* Stress test */
+  .stress-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .stress-card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 6px rgba(0,0,0,.07); }
+  .stress-card h4 { font-size: 12px; font-weight: 700; color: #1e1b4b; margin-bottom: 12px; }
+  .stress-input-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    padding: 8px 10px; background: #f8fafc; border-radius: 8px;
+  }
+  .stress-input-row label { font-size: 11px; font-weight: 700; color: #475569; flex:1; }
+  .stress-input {
+    width: 72px; padding: 4px 8px; border: 1px solid #6366f1; border-radius: 5px;
+    background: #eef2ff; color: #1e1b4b; font-size: 12px; text-align: right; font-weight: 700;
+  }
+  .stress-unit { font-size: 11px; color: #94a3b8; width: 28px; }
+  .stress-result-grid {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 8px;
+  }
+  .stress-result-box {
+    padding: 10px; border-radius: 8px; text-align: center; background: #f8fafc;
+  }
+  .stress-result-box .srb-label { font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing:.04em; }
+  .stress-result-box .srb-val   { font-size: 15px; font-weight: 800; margin-top: 3px; }
+  .srb-val.pos { color: #059669; } .srb-val.neg { color: #dc2626; } .srb-val.warn { color: #d97706; }
+  .stress-loan-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .stress-loan-table th { background: #f1f5f9; padding: 5px 8px; text-align: left; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing:.04em; }
+  .stress-loan-table td { padding: 5px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+
+  /* Break-even */
+  .breakeven-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .breakeven-card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 6px rgba(0,0,0,.07); }
+  .breakeven-card h4 { font-size: 12px; font-weight: 700; color: #1e1b4b; margin-bottom: 12px; }
+  .be-stat-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 10px; background: #f8fafc; border-radius: 7px; margin-bottom: 6px;
+  }
+  .be-stat-row .bsr-label { font-size: 11px; font-weight: 600; color: #64748b; }
+  .be-stat-row .bsr-val   { font-size: 13px; font-weight: 800; color: #1e293b; }
+  .be-stat-row .bsr-val.pos { color: #059669; } .be-stat-row .bsr-val.neg { color: #dc2626; }
+  .runway-bar-wrap { margin: 12px 0; }
+  .runway-label-row { display:flex; justify-content:space-between; font-size:10px; color:#64748b; margin-bottom:4px; font-weight:600; }
+  .runway-track { height: 20px; background: #e2e8f0; border-radius: 6px; overflow: hidden; position: relative; }
+  .runway-fill  { height: 100%; border-radius: 6px; transition: width .5s ease; }
+  .runway-months { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .runway-month-pill {
+    padding: 4px 9px; border-radius: 20px; font-size: 10px; font-weight: 700;
+    background: #dcfce7; color: #15803d;
+  }
+  .runway-month-pill.warn { background: #fef3c7; color: #92400e; }
+  .runway-month-pill.danger { background: #fee2e2; color: #b91c1c; }
+
+  /* Working Capital */
+  .wc-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 16px; }
+  .wc-card { background:#fff; border-radius:10px; padding:16px; box-shadow:0 1px 6px rgba(0,0,0,.07); }
+  .wc-card h4 { font-size:12px; font-weight:700; color:#1e1b4b; margin-bottom:12px; }
+  .wc-input-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .wc-input-row label { font-size:11px; color:#64748b; font-weight:600; flex:1; }
+  .wc-input {
+    width:60px; padding:3px 6px; border:1px solid #6366f1; border-radius:5px;
+    background:#eef2ff; color:#1e1b4b; font-size:11px; text-align:right; font-weight:700;
+  }
+  .wc-metric-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #f1f5f9; }
+  .wc-metric-row:last-child { border-bottom:none; }
+  .wc-metric-row .wm-label { font-size:11px; color:#64748b; font-weight:600; }
+  .wc-metric-row .wm-val   { font-size:13px; font-weight:800; color:#1e293b; }
+  .wm-val.good { color:#059669; } .wm-val.warn { color:#d97706; } .wm-val.bad { color:#dc2626; }
+
+  /* Burn rate */
+  .burn-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  .burn-card { background:#fff; border-radius:10px; padding:16px; box-shadow:0 1px 6px rgba(0,0,0,.07); }
+  .burn-card h4 { font-size:12px; font-weight:700; color:#1e1b4b; margin-bottom:12px; }
+  .burn-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .burn-table th { background:#f1f5f9; padding:5px 8px; text-align:center; font-size:9.5px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.04em; }
+  .burn-table th:first-child { text-align:left; }
+  .burn-table td { padding:5px 8px; border-bottom:1px solid #f8fafc; text-align:center; vertical-align:middle; }
+  .burn-table td:first-child { text-align:left; font-weight:700; color:#1e1b4b; }
+  .heat-cell { border-radius:4px; padding:3px 6px; font-weight:700; font-size:10.5px; }
+
+  /* Sensitivity */
+  .sens-card { background:#fff; border-radius:10px; padding:16px; box-shadow:0 1px 6px rgba(0,0,0,.07); margin-bottom:16px; }
+  .sens-card h4 { font-size:12px; font-weight:700; color:#1e1b4b; margin-bottom:12px; }
+  .sens-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .sens-table th { background:#1e1b4b; color:#e0e7ff; padding:7px 10px; text-align:center; font-size:10px; font-weight:700; }
+  .sens-table th:first-child { text-align:left; }
+  .sens-table td { padding:6px 10px; border-bottom:1px solid #f1f5f9; text-align:center; }
+  .sens-table td:first-child { text-align:left; font-weight:700; color:#1e293b; }
+  .sens-table tr:hover td { background:#f8fafc; }
+  .sens-val { border-radius:5px; padding:3px 8px; font-weight:700; font-size:11px; }
+  .sv-green  { background:#dcfce7; color:#15803d; }
+  .sv-yellow { background:#fef9c3; color:#854d0e; }
+  .sv-orange { background:#ffedd5; color:#9a3412; }
+  .sv-red    { background:#fee2e2; color:#b91c1c; }
+  .sv-neutral{ background:#f1f5f9; color:#64748b; }
+
+  /* Export */
+  .export-bar {
+    background: #fff; border-radius: 10px; padding: 14px 20px; margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .export-bar span { font-size: 12px; font-weight: 700; color: #1e1b4b; }
+  .btn-export {
+    padding: 8px 18px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px;
+    transition: all .15s;
+  }
+  .btn-primary { background: #4f46e5; color: #fff; }
+  .btn-primary:hover { background: #4338ca; }
+  .btn-secondary { background: #f1f5f9; color: #1e1b4b; border: 1px solid #e2e8f0; }
+  .btn-secondary:hover { background: #e2e8f0; }
+  .btn-green { background: #10b981; color: #fff; }
+  .btn-green:hover { background: #059669; }
+
+  /* ── PRINT ── */
+  @media print {
+    .top-bar, .scenario-tabs, .stab, .btn-export, .export-bar { display: none !important; }
+    .scenario-panel { display: block !important; }
+    body { background: #fff; font-size: 11px; }
+    .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .chart-card, .scen-card, .kpi-card, .wc-card, .burn-card, .stress-card, .breakeven-card, .sens-card {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      break-inside: avoid; page-break-inside: avoid;
+    }
+    .table-wrap { overflow: visible; }
+    table { min-width: unset !important; font-size: 9px; }
+    input.cell-input, input.pct-input { border: none; background: none; font-weight: 700; }
+    @page { margin: 15mm; size: A4 landscape; }
+  }
+
+  /* ── PIN LOCK OVERLAY ── */
+  #pin-lock-overlay {
+    position: fixed; inset: 0; z-index: 99999;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pin-card {
+    background: #fff; border-radius: 16px;
+    padding: 44px 52px; max-width: 420px; width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    animation: fadeInCard 0.4s ease;
+  }
+  @keyframes fadeInCard { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes shake {
+    0%,100%{ transform:translateX(0); }
+    20%    { transform:translateX(-10px); }
+    40%    { transform:translateX(10px); }
+    60%    { transform:translateX(-8px); }
+    80%    { transform:translateX(8px); }
+  }
+  .pin-card .pin-icon  { font-size: 44px; margin-bottom: 10px; }
+  .pin-card h2         { font-size: 20px; font-weight: 800; color: #1e1b4b; margin-bottom: 4px; }
+  .pin-card p          { font-size: 12px; color: #64748b; margin-bottom: 28px; }
+  .pin-input-wrap      { position: relative; margin-bottom: 8px; }
+  .pin-input-wrap i    { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; }
+  #pin-input {
+    width: 100%; padding: 13px 14px 13px 40px;
+    border: 2px solid #e0e7ff; border-radius: 10px;
+    font-size: 20px; letter-spacing: 6px; text-align: center;
+    color: #1e1b4b; font-weight: 700; outline: none;
+    transition: border-color 0.2s;
+  }
+  #pin-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+  .pin-btn {
+    width: 100%; padding: 13px; margin-top: 16px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #fff; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    letter-spacing: 0.5px; transition: opacity 0.2s;
+  }
+  .pin-btn:hover { opacity: 0.9; }
+  #pin-error {
+    display: none; color: #dc2626; font-size: 12px;
+    font-weight: 600; margin-top: 12px;
+  }
+  .pin-attempts { font-size: 11px; color: #94a3b8; margin-top: 8px; }
+
+  /* ── SAVE STATUS BADGE ── */
+  #save-status {
+    font-size: 11px; font-weight: 700;
+    padding: 4px 12px; border-radius: 20px;
+    background: rgba(255,255,255,0.15);
+    color: #a5b4fc; transition: color 0.3s;
+    white-space: nowrap;
+  }
+  #save-status.saved   { color: #6ee7b7; }
+  #save-status.saving  { color: #fcd34d; }
+  #save-status.error   { color: #fca5a5; }
+  #save-status.pending { color: #c4b5fd; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     PIN LOCK OVERLAY — shown before page content
+════════════════════════════════════════════════ -->
+<div id="pin-lock-overlay">
+  <div class="pin-card" id="pin-card">
+    <div class="pin-icon">🔐</div>
+    <h2>Cash Flow — Secured</h2>
+    <p>Enter your 6-digit PIN to access the Cash Flow Planner</p>
+    <div class="pin-input-wrap">
+      <i class="fas fa-lock"></i>
+      <input type="password" id="pin-input" maxlength="6" placeholder="• • • • • •"
+             onkeydown="if(event.key==='Enter') verifyPin()" autocomplete="off" />
+    </div>
+    <button class="pin-btn" onclick="verifyPin()">🔓 Unlock</button>
+    <p id="pin-error"><i class="fas fa-exclamation-circle"></i> Incorrect PIN. Please try again.</p>
+    <p class="pin-attempts" id="pin-attempts"></p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MAIN CONTENT — hidden until PIN is verified
+════════════════════════════════════════════════ -->
+<div id="main-content" style="display:none;">
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <h1>📊 Twelve-Month Cash Flow</h1>
+    <p>FY 2026–27 &nbsp;·&nbsp; Live Interactive Model &nbsp;·&nbsp; All values in ₹ Lakhs</p>
+  </div>
+  <div id="save-status">⏳ Loading…</div>
+</div>
+
+<!-- OPENING BALANCE INPUT -->
+<div class="top-bar">
+  <label for="startMonthSel" style="font-weight:700;color:#1e1b4b;font-size:13px;">Start Month:</label>
+  <select id="startMonthSel" onchange="onStartMonthChange()" style="padding:4px 8px;border:1px solid #6366f1;border-radius:5px;background:#fff;color:#1e1b4b;font-size:13px;font-weight:600;cursor:pointer;">
+    <option value="0">Aug-26</option>
+    <option value="1">Sep-26</option>
+    <option value="2">Oct-26</option>
+    <option value="3">Nov-26</option>
+    <option value="4">Dec-26</option>
+    <option value="5">Jan-27</option>
+    <option value="6">Feb-27</option>
+    <option value="7">Mar-27</option>
+    <option value="8">Apr-27</option>
+    <option value="9">May-27</option>
+    <option value="10">Jun-27</option>
+    <option value="11">Jul-27</option>
+  </select>
+  <label for="openingBal" id="obLabel" style="font-weight:700;color:#1e1b4b;font-size:13px;margin-left:8px;">Opening Balance (Cash on Hand – Aug-26):</label>
+  <input type="number" id="openingBal" step="any" value="5" oninput="recalculate()" />
+  <span style="font-size:12px;color:#6366f1;font-weight:600;">₹ Lakhs</span>
+  <span class="hint">
+    <span>Purple % cells</span> → change % → all 12 months recalculate &nbsp;|&nbsp;
+    <span>Blue cells</span> → direct monthly inputs &nbsp;|&nbsp;
+    Closing balance auto-rolls to next month's opening
+  </span>
+</div>
+
+<!-- TABLE -->
+<div class="table-wrap">
+<table id="cfTable">
+<thead>
+  <tr id="theadRow">
+    <th>Category</th>
+    <th>Item</th>
+    <th>%</th>
+    <th id="th0">Aug-26</th><th id="th1">Sep-26</th><th id="th2">Oct-26</th><th id="th3">Nov-26</th>
+    <th id="th4">Dec-26</th><th id="th5">Jan-27</th><th id="th6">Feb-27</th><th id="th7">Mar-27</th>
+    <th id="th8">Apr-27</th><th id="th9">May-27</th><th id="th10">Jun-27</th><th id="th11">Jul-27</th>
+  </tr>
+</thead>
+<tbody id="cfBody"></tbody>
+</table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     ANALYTICS DASHBOARD (replaces summary cards)
+═══════════════════════════════════════════════ -->
+<div class="analytics-section">
+
+  <div class="analytics-header">
+    <h2>📈 Financial Analytics Dashboard</h2>
+    <span>FY 2026–27 · Auto-updates on edit</span>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="kpi-row" id="kpiRow">
+    <div class="kpi-card green">
+      <div class="kpi-badge">💰</div>
+      <div class="kpi-label">Total Receipts FY</div>
+      <div class="kpi-value pos" id="kpiTotalReceipts">–</div>
+      <div class="kpi-sub">Across all 12 months</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-badge">📤</div>
+      <div class="kpi-label">Total Cash Out FY</div>
+      <div class="kpi-value neg" id="kpiTotalOut">–</div>
+      <div class="kpi-sub">Operating + financing</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-badge">🏦</div>
+      <div class="kpi-label">Year-End Position</div>
+      <div class="kpi-value" id="kpiYearEnd">–</div>
+      <div class="kpi-sub">Closing balance Jul-27</div>
+    </div>
+    <div class="kpi-card indigo">
+      <div class="kpi-badge">📅</div>
+      <div class="kpi-label">Negative Months</div>
+      <div class="kpi-value" id="kpiNegMonths">–</div>
+      <div class="kpi-sub">Months below zero</div>
+    </div>
+  </div>
+
+  <!-- Chart Row 1: Main Combo + Expense Breakdown -->
+  <div class="charts-grid">
+
+    <!-- Main Cash Flow Line + Bar Chart -->
+    <div class="chart-card">
+      <h3>💹 Cash Flow Overview — Receipts vs Outflow vs Position
+        <span class="badge" id="chartBadge1">FY 2026-27</span>
+      </h3>
+      <svg id="mainChart" class="chart-svg" viewBox="0 0 680 210" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="receiptGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#6366f1" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="outGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#ef4444" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#ef4444" stop-opacity="0"/>
+          </linearGradient>
+          <filter id="shadow">
+            <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#0002"/>
+          </filter>
+        </defs>
+        <g id="mainChartG"></g>
+      </svg>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div>Total Receipts</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Total Cash Out</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981;border-radius:50%"></div>Cash Position</div>
+      </div>
+    </div>
+
+    <!-- Donut: Average Cost Breakdown -->
+    <div class="chart-card">
+      <h3>🥧 Avg Cost Breakdown
+        <span class="badge" id="donutBadge">FY Total</span>
+      </h3>
+      <div class="donut-wrap">
+        <svg id="donutChart" width="140" height="140" viewBox="0 0 140 140"></svg>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Chart Row 2: Cash Position + Receipts vs Plan + Operating trend -->
+  <div class="charts-grid-3">
+
+    <!-- Month-by-month cash position horizontal bars -->
+    <div class="chart-card">
+      <h3>🏦 Month-End Cash Position (₹L)</h3>
+      <div class="month-rows" id="cashPosBars"></div>
+    </div>
+
+    <!-- Receipts vs Sales Plan -->
+    <div class="chart-card">
+      <h3>📦 Receipts vs Sales Plan (₹L)</h3>
+      <svg id="planChart" class="chart-svg" viewBox="0 0 280 200" xmlns="http://www.w3.org/2000/svg">
+        <g id="planChartG"></g>
+      </svg>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div>Sales Plan</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Actual Receipts</div>
+      </div>
+    </div>
+
+    <!-- Operating expense waterfall by category -->
+    <div class="chart-card">
+      <h3>🔍 Operating Cost Drivers (Avg ₹L/mo)</h3>
+      <table class="trend-table" id="costTable">
+        <thead>
+          <tr><th>Category</th><th>Avg/Mo</th><th>Share</th><th style="width:90px">Bar</th></tr>
+        </thead>
+        <tbody id="costTableBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- Chart Row 3: Month variance table -->
+  <div class="chart-card" style="margin-bottom:0">
+    <h3>📋 Month-by-Month Financial Summary
+      <span class="badge">All values ₹ Lakhs</span>
+    </h3>
+    <div style="overflow-x:auto">
+      <table class="trend-table" id="summaryTable" style="min-width:900px">
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th style="text-align:right">Sales Plan</th>
+            <th style="text-align:right">Receipts</th>
+            <th style="text-align:right">Cash Available</th>
+            <th style="text-align:right">Total Out</th>
+            <th style="text-align:right">Net Flow</th>
+            <th style="text-align:right">Closing Position</th>
+            <th style="text-align:right">MoM Change</th>
+          </tr>
+        </thead>
+        <tbody id="summaryTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /analytics-section -->
+
+<!-- ══════════════════════════════════════════════
+     SCENARIO & ADVANCED ANALYSIS SECTION
+══════════════════════════════════════════════ -->
+<div class="scenario-section" id="scenarioSection">
+
+  <!-- Export bar -->
+  <div class="export-bar">
+    <span>📤 Export & Print</span>
+    <button class="btn-export btn-primary" onclick="window.print()">🖨️ Print / PDF</button>
+    <button class="btn-export btn-secondary" onclick="exportCSV()">📊 Export CSV</button>
+    <button class="btn-export btn-green" onclick="copySnapshot()">📋 Copy Summary</button>
+    <span id="exportMsg" style="font-size:11px;color:#059669;display:none">✓ Copied!</span>
+  </div>
+
+  <!-- Section divider -->
+  <div class="section-divider">
+    <h2>🎯 Scenario Engine & Advanced Analysis</h2>
+    <div class="sdiv-line"></div>
+    <span>Live · Updates with base data</span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="scenario-tabs">
+    <button class="stab active" onclick="switchTab('scenarios')">📊 Best / Base / Worst</button>
+    <button class="stab" onclick="switchTab('whatif')">🎛️ What-If Sliders</button>
+    <button class="stab" onclick="switchTab('stress')">⚡ Loan Stress Test</button>
+    <button class="stab" onclick="switchTab('breakeven')">🎯 Break-Even & Runway</button>
+    <button class="stab" onclick="switchTab('wc')">🔄 Working Capital</button>
+    <button class="stab" onclick="switchTab('burn')">🔥 Burn Rate</button>
+    <button class="stab" onclick="switchTab('sensitivity')">📉 Sensitivity Table</button>
+  </div>
+
+  <!-- ── TAB 1: SCENARIOS ── -->
+  <div class="scenario-panel active" id="tab-scenarios">
+    <div class="scen-assumptions">
+      <strong>How scenarios work:</strong> Best case applies +20% sales uplift and –5% RM cost. Base uses your current inputs. Worst case applies –25% sales and +10% RM cost. All financing obligations remain unchanged across scenarios.
+    </div>
+    <div class="scenario-3col" id="scenCards"></div>
+    <div class="scen-chart-wrap">
+      <h4>📈 Cash Position Comparison — All Scenarios vs Base</h4>
+      <svg id="scenCompChart" width="100%" viewBox="0 0 740 220" xmlns="http://www.w3.org/2000/svg"><g id="scenCompG"></g></svg>
+      <div class="legend" style="margin-top:8px">
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Best Case</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div>Base Case</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Worst Case</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB 2: WHAT-IF SLIDERS ── -->
+  <div class="scenario-panel" id="tab-whatif">
+    <div class="whatif-impact" id="wiImpact">
+      <div class="wi-impact-card"><div class="wi-impact-label">Adj. Total Receipts</div><div class="wi-impact-val" id="wiTotalRec">–</div><div class="wi-impact-delta" id="wiTotalRecD"></div></div>
+      <div class="wi-impact-card red"><div class="wi-impact-label">Adj. Total Out</div><div class="wi-impact-val" id="wiTotalOut">–</div><div class="wi-impact-delta" id="wiTotalOutD"></div></div>
+      <div class="wi-impact-card green"><div class="wi-impact-label">Adj. Year-End</div><div class="wi-impact-val" id="wiYearEnd">–</div><div class="wi-impact-delta" id="wiYearEndD"></div></div>
+      <div class="wi-impact-card amber"><div class="wi-impact-label">Negative Months</div><div class="wi-impact-val" id="wiNegMo">–</div><div class="wi-impact-delta" id="wiNegMoD"></div></div>
+    </div>
+    <div class="whatif-grid">
+      <div class="slider-card">
+        <h4>💰 Revenue Levers</h4>
+        <div class="slider-item">
+          <div class="slider-header">
+            <span class="slider-label">Sales Volume Change</span>
+            <span class="slider-val-badge" id="wiSalesBadge">0%</span>
+          </div>
+          <input type="range" class="wi-slider" id="wiSales" min="-50" max="50" value="0" step="1" oninput="updateWhatIf()">
+          <div class="slider-hint">Applies a uniform % change to all 12 months of sales plan and receipts</div>
+        </div>
+        <div class="slider-item">
+          <div class="slider-header">
+            <span class="slider-label">Collections Delay (months)</span>
+            <span class="slider-val-badge" id="wiDelayBadge">0 mo</span>
+          </div>
+          <input type="range" class="wi-slider" id="wiDelay" min="0" max="3" value="0" step="1" oninput="updateWhatIf()">
+          <div class="slider-hint">Shifts receipt collection forward — simulates slow debtor payments</div>
+        </div>
+        <div class="slider-item">
+          <div class="slider-header">
+            <span class="slider-label">Loan / Cash Injection</span>
+            <span class="slider-val-badge" id="wiLoanBadge">₹0L</span>
+          </div>
+          <input type="range" class="wi-slider green" id="wiLoan" min="0" max="200" value="0" step="5" oninput="updateWhatIf()">
+          <div class="slider-hint">One-time additional cash injection in Aug-26 (first month)</div>
+        </div>
+      </div>
+      <div class="slider-card">
+        <h4>📦 Cost Levers</h4>
+        <div class="slider-item">
+          <div class="slider-header">
+            <span class="slider-label">Raw Material Cost Change</span>
+            <span class="slider-val-badge" id="wiRMBadge">0%</span>
+          </div>
+          <input type="range" class="wi-slider red" id="wiRM" min="-30" max="50" value="0" step="1" oninput="updateWhatIf()">
+          <div class="slider-hint">Adjusts RM % of sales plan (currently 42%). Higher = more expensive steel/input</div>
+        </div>
+        <div class="slider-item">
+          <div class="slider-header">
+            <span class="slider-label">Salary / Headcount Change</span>
+            <span class="slider-val-badge" id="wiSalBadge">0%</span>
+          </div>
+          <input type="range" class="wi-slider red" id="wiSal" min="-20" max="50" value="0" step="1" oninput="updateWhatIf()">
+          <div class="slider-hint">% change applied to monthly salary figures across all months</div>
+        </div>
+        <div class="slider-item">
+          <div class="slider-header">
+            <span class="slider-label">Fixed Overhead Change</span>
+            <span class="slider-val-badge" id="wiOHBadge">0%</span>
+          </div>
+          <input type="range" class="wi-slider amber" id="wiOH" min="-20" max="40" value="0" step="1" oninput="updateWhatIf()">
+          <div class="slider-hint">% change to EB, R&M, food, rent, telephone, advertising costs</div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>🎛️ What-If Cash Position vs Base</h3>
+      <svg id="wiChart" width="100%" viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg"><g id="wiChartG"></g></svg>
+      <div class="legend" style="margin-top:8px">
+        <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div>Base</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>What-If Adjusted</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB 3: STRESS TEST ── -->
+  <div class="scenario-panel" id="tab-stress">
+    <div class="stress-grid">
+      <div class="stress-card">
+        <h4>⚡ Loan Repayment Stress Parameters</h4>
+        <div class="stress-input-row">
+          <label>Principal Payment Spike Month</label>
+          <select id="stressSpikeMo" onchange="updateStress()" class="stress-input" style="width:90px">
+            <option value="-1">None</option>
+            <option value="0">Aug-26</option><option value="1">Sep-26</option><option value="2">Oct-26</option>
+            <option value="3">Nov-26</option><option value="4">Dec-26</option><option value="5">Jan-27</option>
+            <option value="6">Feb-27</option><option value="7">Mar-27</option><option value="8">Apr-27</option>
+            <option value="9">May-27</option><option value="10">Jun-27</option><option value="11">Jul-27</option>
+          </select>
+        </div>
+        <div class="stress-input-row">
+          <label>Extra Principal in Spike Month (₹L)</label>
+          <input type="number" class="stress-input" id="stressSpikeAmt" value="0" min="0" step="1" oninput="updateStress()">
+          <span class="stress-unit">₹L</span>
+        </div>
+        <div class="stress-input-row">
+          <label>Interest Rate Rise (basis pts)</label>
+          <input type="number" class="stress-input" id="stressRateRise" value="0" min="0" max="500" step="25" oninput="updateStress()">
+          <span class="stress-unit">bps</span>
+        </div>
+        <div class="stress-input-row">
+          <label>Delay All Payments by (months)</label>
+          <input type="number" class="stress-input" id="stressDelay" value="0" min="0" max="3" step="1" oninput="updateStress()">
+          <span class="stress-unit">mo</span>
+        </div>
+        <div class="stress-input-row">
+          <label>Additional Unsecured Borrowing (₹L)</label>
+          <input type="number" class="stress-input" id="stressExtraLoan" value="0" min="0" step="5" oninput="updateStress()">
+          <span class="stress-unit">₹L</span>
+        </div>
+      </div>
+      <div class="stress-card">
+        <h4>📊 Stress Test Results</h4>
+        <div class="stress-result-grid" id="stressResults">
+          <div class="stress-result-box"><div class="srb-label">Base Year-End</div><div class="srb-val" id="stBaseYE">–</div></div>
+          <div class="stress-result-box"><div class="srb-label">Stressed Year-End</div><div class="srb-val" id="stStressYE">–</div></div>
+          <div class="stress-result-box"><div class="srb-label">Impact</div><div class="srb-val" id="stImpact">–</div></div>
+          <div class="stress-result-box"><div class="srb-label">Base Neg Months</div><div class="srb-val" id="stBaseNeg">–</div></div>
+          <div class="stress-result-box"><div class="srb-label">Stressed Neg Months</div><div class="srb-val" id="stStressNeg">–</div></div>
+          <div class="stress-result-box"><div class="srb-label">Worst Month</div><div class="srb-val" id="stWorstMo">–</div></div>
+        </div>
+        <div style="margin-top:14px">
+          <svg id="stressChart" width="100%" viewBox="0 0 380 160" xmlns="http://www.w3.org/2000/svg"><g id="stressChartG"></g></svg>
+          <div class="legend" style="margin-top:6px">
+            <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div>Base</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Stressed</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stress-card">
+      <h4>📋 Month-by-Month Loan Schedule: Base vs Stressed</h4>
+      <div style="overflow-x:auto">
+        <table class="stress-loan-table" id="stressLoanTable">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th style="text-align:right">Base Principal</th>
+              <th style="text-align:right">Base Interest</th>
+              <th style="text-align:right">Base Total</th>
+              <th style="text-align:right">Stressed Total</th>
+              <th style="text-align:right">Difference</th>
+              <th style="text-align:right">Cash Position (Stressed)</th>
+            </tr>
+          </thead>
+          <tbody id="stressLoanBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB 4: BREAK-EVEN & RUNWAY ── -->
+  <div class="scenario-panel" id="tab-breakeven">
+    <div class="breakeven-grid">
+      <div class="breakeven-card">
+        <h4>🎯 Break-Even Analysis</h4>
+        <div class="be-stat-row"><span class="bsr-label">Avg Monthly Fixed Costs</span><span class="bsr-val" id="beFixedCosts">–</span></div>
+        <div class="be-stat-row"><span class="bsr-label">Avg Variable Cost Ratio</span><span class="bsr-val" id="beVarRatio">–</span></div>
+        <div class="be-stat-row"><span class="bsr-label">Avg Contribution Margin %</span><span class="bsr-val" id="beContribMargin">–</span></div>
+        <div class="be-stat-row"><span class="bsr-label">Break-Even Revenue / Month</span><span class="bsr-val pos" id="beRevRequired">–</span></div>
+        <div class="be-stat-row"><span class="bsr-label">Break-Even Revenue / Year</span><span class="bsr-val pos" id="beRevYear">–</span></div>
+        <div class="be-stat-row"><span class="bsr-label">Avg Actual Monthly Revenue</span><span class="bsr-val blue" id="beActualRev">–</span></div>
+        <div class="be-stat-row"><span class="bsr-label">Safety Margin (vs Break-Even)</span><span class="bsr-val" id="beSafetyMargin">–</span></div>
+
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid #f1f5f9;">
+          <div style="font-size:11px;font-weight:700;color:#1e1b4b;margin-bottom:8px">📊 Revenue Needed to Break Even — Monthly</div>
+          <svg id="beChart" width="100%" viewBox="0 0 400 180" xmlns="http://www.w3.org/2000/svg"><g id="beChartG"></g></svg>
+          <div class="legend" style="margin-top:6px">
+            <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div>Actual Receipts</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#ef4444;opacity:.7"></div>Break-Even Line</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="breakeven-card">
+        <h4>⛽ Cash Runway Analysis</h4>
+        <div class="be-stat-row"><span class="bsr-label">Current Cash Position</span><span class="bsr-val" id="rwCurrentCash">–</span></div>
+        <div class="be-stat-row"><span class="bsr-label">Avg Monthly Net Burn</span><span class="bsr-val" id="rwAvgBurn">–</span></div>
+        <div class="be-stat-row"><span class="bsr-label">Months of Runway</span><span class="bsr-val pos" id="rwMonths">–</span></div>
+        <div class="be-stat-row"><span class="bsr-label">Runway End Date</span><span class="bsr-val" id="rwEndDate">–</span></div>
+        <div class="be-stat-row"><span class="bsr-label">Min Cash Reserve Needed (3mo)</span><span class="bsr-val neg" id="rwMinReserve">–</span></div>
+        <div class="be-stat-row"><span class="bsr-label">Months Below Min Reserve</span><span class="bsr-val" id="rwBelowReserve">–</span></div>
+
+        <div class="runway-bar-wrap">
+          <div class="runway-label-row"><span>Cash Runway Gauge</span><span id="rwPctLabel">–</span></div>
+          <div class="runway-track"><div class="runway-fill" id="rwFill" style="width:0%"></div></div>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:#1e1b4b;margin:12px 0 6px">Month-by-Month Runway Health</div>
+        <div class="runway-months" id="rwMonthPills"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB 5: WORKING CAPITAL ── -->
+  <div class="scenario-panel" id="tab-wc">
+    <div class="wc-grid">
+      <div class="wc-card">
+        <h4>📥 Receivables (DSO)</h4>
+        <div class="wc-input-row">
+          <label>Avg Debtor Outstanding Days</label>
+          <input type="number" class="wc-input" id="wcDSO" value="45" min="0" max="180" oninput="updateWC()">
+        </div>
+        <div class="wc-input-row">
+          <label>Avg Monthly Credit Sales ₹L</label>
+          <input type="number" class="wc-input" id="wcCreditSales" value="200" min="0" oninput="updateWC()">
+        </div>
+        <div class="wc-metric-row"><span class="wm-label">DSO (Days Sales Outstanding)</span><span class="wm-val" id="wcDSOVal">–</span></div>
+        <div class="wc-metric-row"><span class="wm-label">Debtors / Receivables Tied Up</span><span class="wm-val" id="wcReceivables">–</span></div>
+        <div class="wc-metric-row"><span class="wm-label">If DSO reduced by 10 days</span><span class="wm-val good" id="wcDSOSaving">–</span></div>
+        <div class="wc-metric-row"><span class="wm-label">Annualised Cash Release</span><span class="wm-val good" id="wcDSOAnnual">–</span></div>
+      </div>
+      <div class="wc-card">
+        <h4>📤 Payables (DPO)</h4>
+        <div class="wc-input-row">
+          <label>Avg Creditor Payment Days</label>
+          <input type="number" class="wc-input" id="wcDPO" value="30" min="0" max="120" oninput="updateWC()">
+        </div>
+        <div class="wc-input-row">
+          <label>Avg Monthly Purchases ₹L</label>
+          <input type="number" class="wc-input" id="wcPurchases" value="100" min="0" oninput="updateWC()">
+        </div>
+        <div class="wc-metric-row"><span class="wm-label">DPO (Days Payable Outstanding)</span><span class="wm-val" id="wcDPOVal">–</span></div>
+        <div class="wc-metric-row"><span class="wm-label">Creditors / Payables Outstanding</span><span class="wm-val" id="wcPayables">–</span></div>
+        <div class="wc-metric-row"><span class="wm-label">If DPO extended by 10 days</span><span class="wm-val good" id="wcDPOBenefit">–</span></div>
+        <div class="wc-metric-row"><span class="wm-label">Annualised Cash Benefit</span><span class="wm-val good" id="wcDPOAnnual">–</span></div>
+      </div>
+      <div class="wc-card">
+        <h4>🔄 Working Capital Cycle</h4>
+        <div class="wc-input-row">
+          <label>Inventory Holding Days</label>
+          <input type="number" class="wc-input" id="wcDIO" value="20" min="0" max="120" oninput="updateWC()">
+        </div>
+        <div class="wc-metric-row"><span class="wm-label">Cash Conversion Cycle</span><span class="wm-val" id="wcCCC">–</span></div>
+        <div class="wc-metric-row"><span class="wm-label">Interpretation</span><span class="wm-val" id="wcCCCRating">–</span></div>
+        <div class="wc-metric-row"><span class="wm-label">Working Capital Required</span><span class="wm-val" id="wcRequired">–</span></div>
+        <div class="wc-metric-row"><span class="wm-label">Avg Cash Available</span><span class="wm-val" id="wcAvailCash">–</span></div>
+        <div class="wc-metric-row"><span class="wm-label">WC Gap (Required – Available)</span><span class="wm-val" id="wcGap">–</span></div>
+        <div class="wc-metric-row"><span class="wm-label">Current Ratio (proxy)</span><span class="wm-val" id="wcCurrentRatio">–</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB 6: BURN RATE ── -->
+  <div class="scenario-panel" id="tab-burn">
+    <div class="burn-grid">
+      <div class="burn-card">
+        <h4>🔥 Rolling 3-Month Cash Burn (₹ Lakhs)</h4>
+        <div style="overflow-x:auto">
+          <table class="burn-table" id="burnTable">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Receipts</th>
+                <th>Cash Out</th>
+                <th>Net Flow</th>
+                <th>3-Mo Avg Burn</th>
+                <th>3-Mo Cumulative</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="burnTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="burn-card">
+        <h4>📊 Rolling Burn Rate Trend</h4>
+        <svg id="burnChart" width="100%" viewBox="0 0 360 200" xmlns="http://www.w3.org/2000/svg"><g id="burnChartG"></g></svg>
+        <div class="legend" style="margin-top:8px">
+          <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Net Flow</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>3-Mo Avg Burn</div>
+        </div>
+        <div style="margin-top:12px;padding:10px;background:#f8fafc;border-radius:8px;font-size:11px;color:#475569;line-height:1.7">
+          <strong style="color:#1e1b4b">🔍 Burn Rate Insight:</strong><br>
+          <span id="burnInsight">–</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB 7: SENSITIVITY ── -->
+  <div class="scenario-panel" id="tab-sensitivity">
+    <div class="sens-card">
+      <h4>📉 Sensitivity: Year-End Cash Position Change vs Base (₹L)</h4>
+      <p style="font-size:11px;color:#64748b;margin-bottom:12px">Shows how the year-end cash position changes when each driver shifts independently. Red = worse, Green = better.</p>
+      <div style="overflow-x:auto">
+        <table class="sens-table" id="sensTable">
+          <thead>
+            <tr>
+              <th>Driver</th>
+              <th>–20%</th>
+              <th>–10%</th>
+              <th>Base</th>
+              <th>+10%</th>
+              <th>+20%</th>
+              <th>+30%</th>
+              <th>Impact per 10%</th>
+            </tr>
+          </thead>
+          <tbody id="sensTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="sens-card">
+      <h4>🏆 Driver Ranking: Most Impactful on Cash Position</h4>
+      <div id="sensRanking" style="display:flex;flex-direction:column;gap:8px;margin-top:4px"></div>
+    </div>
+  </div>
+
+</div><!-- /scenario-section -->
+
+<script>
+// ─────────────────────────────────────────────
+//  DATA
+// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+//  ALL 24 POSSIBLE MONTHS (FY 2026-27 + FY 2027-28)
+// ─────────────────────────────────────────────
+const ALL_MONTHS = [
+  "Aug-26","Sep-26","Oct-26","Nov-26","Dec-26","Jan-27","Feb-27","Mar-27","Apr-27","May-27","Jun-27","Jul-27",
+  "Aug-27","Sep-27","Oct-27","Nov-27","Dec-27","Jan-28","Feb-28","Mar-28","Apr-28","May-28","Jun-28","Jul-28"
+];
+const N = 12;
+let START_IDX = 0; // index into ALL_MONTHS for month[0]
+let MONTHS = ALL_MONTHS.slice(START_IDX, START_IDX + N);
+
+const DATA = {
+  salesPlan:        [200,220,220,200,180,180,220,280,280,280,280,280],
+  receiptFromSales: [56,100,200,220,220,200,180,180,220,280,280,280],
+  collectionsGst:   [0,0,0,0,0,0,0,0,0,0,0,0],
+  loanInflow:       [175,250,0,0,0,0,50,0,0,0,0,0],
+
+  pctRM:           0.42,
+  pctRepeatTool:   0.05,
+  pctBoxesInner:   0.01,
+  pctBoxesOuter:   0.01,
+  pctPackStickers: 0.01,
+  pctOutsource:    0.05,
+  pctTransport:    0.07,
+
+  newTooling:      [1,1,1,1,1,1,1,1,1,1,1,1],
+  quenchOil:       [0,0.63,0,0.63,0,0.63,0,0.63,0,0.63,0,0.63],
+  lubOil:          [1,1,1,1,1,1,1,1,1,1,1,1],
+  innoline:        [0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5],
+  dephosact:       [0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3],
+  blackeningOil:   [0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5],
+  methanol:        [1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.3],
+  lpg:             [0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5],
+  kmno4:           [0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3],
+  causticSoda:     [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],
+  diesel:          [0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2],
+  rpoOil:          [0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5],
+  salaries:        [25,25,25,25,25,25,25,25,30,30,30,30],
+  food:            [1.8,1.8,1.8,1.8,1.8,1.8,1.8,1.8,1.8,1.8,1.8,1.8],
+  repairsMaint:    [1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5],
+  advertising:     [0.5,0.5,0.5,0.5,0.5,1,1,1,1,1,1,1],
+  carDelivery:     [0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5],
+  accountingLegal: [0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2],
+  rent:            [0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5],
+  telephone:       [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],
+  eb:              [7,7,7,8,8,8,8,8,8,8,8,8],
+  insurance:       [0,0,2,0,0,0,0,0,0,0,0,0.5],
+  taxes:           [0,0,5.5,0,2,1,0,0,0,0,0,0],
+  miscellaneous:   [1,1,5,1,1,1,1,1,1,1,1,1],
+  loanPrincipal:   [44,5.3,4.55,43.55,0.7,0.7,39.7,0.7,0.7,1.55,0.7,0.7],
+  interestTerm:    [4.3,4.3,4.27,4.27,4.12,4.12,4.12,4.12,4.12,4.12,4.12,4.12],
+  interestWC:      [6.5,6.5,6.5,6.5,6.5,6.5,6.5,6.5,6.5,6.5,6.5,6.5],
+  otherBank:       [16.27,13.81,13.81,13.81,13.81,13.81,13.81,13.81,13.81,13.81,13.81,13.81],
+  capitalPurchase: [0,0,0,0,0,0,0,0,0,0,0,0],
+  otherStartup:    [0,0,0,0,0,0,0,0,0,0,0,0],
+  reserveEscrow:   [0,0,0,0,0,0,0,0,0,0,0,0],
+  unsecuredLoan:   [0,0,20,20,20,20,15,0,0,0,0,0],
+};
+
+// ─────────────────────────────────────────────
+//  COMPUTE ENGINE
+// ─────────────────────────────────────────────
+function pctRow(pct, sp) {
+  return sp.map(v => parseFloat((v * pct).toFixed(4)));
+}
+
+function compute() {
+  const sp = DATA.salesPlan;
+  const ob = parseFloat(document.getElementById('openingBal').value) || 0;
+
+  const rm         = pctRow(DATA.pctRM,          sp);
+  const repeatTool = pctRow(DATA.pctRepeatTool,  sp);
+  const boxIn      = pctRow(DATA.pctBoxesInner,  sp);
+  const boxOut     = pctRow(DATA.pctBoxesOuter,  sp);
+  const packStick  = pctRow(DATA.pctPackStickers,sp);
+  const outsource  = pctRow(DATA.pctOutsource,   sp);
+  const transport  = pctRow(DATA.pctTransport,   sp);
+
+  const totalReceipts = Array.from({length:N},(_,i)=>
+    (DATA.receiptFromSales[i]||0)+(DATA.collectionsGst[i]||0)+(DATA.loanInflow[i]||0)
+  );
+
+  const cashOnHand = Array(N).fill(0);
+  cashOnHand[0] = ob;
+
+  const subtotal = Array.from({length:N},(_,i)=>
+    rm[i] + DATA.newTooling[i] + repeatTool[i] +
+    DATA.quenchOil[i] + DATA.lubOil[i] + DATA.innoline[i] +
+    DATA.dephosact[i] + DATA.blackeningOil[i] + DATA.methanol[i] +
+    DATA.lpg[i] + DATA.kmno4[i] + DATA.causticSoda[i] + DATA.diesel[i] + DATA.rpoOil[i] +
+    boxIn[i] + boxOut[i] + packStick[i] +
+    DATA.salaries[i] + DATA.food[i] + DATA.repairsMaint[i] +
+    DATA.advertising[i] + DATA.carDelivery[i] + DATA.accountingLegal[i] +
+    DATA.rent[i] + DATA.telephone[i] + DATA.eb[i] +
+    DATA.insurance[i] + DATA.taxes[i] + outsource[i] + transport[i] +
+    DATA.miscellaneous[i]
+  );
+
+  const totalPaidOut = Array.from({length:N},(_,i)=>
+    subtotal[i] + DATA.loanPrincipal[i] + DATA.interestTerm[i] +
+    DATA.interestWC[i] + DATA.otherBank[i] +
+    DATA.capitalPurchase[i] + DATA.otherStartup[i] + DATA.reserveEscrow[i] +
+    DATA.unsecuredLoan[i]
+  );
+
+  const totalAvailable = Array(N).fill(0);
+  const cashPosition   = Array(N).fill(0);
+
+  for (let i=0; i<N; i++) {
+    totalAvailable[i] = parseFloat((cashOnHand[i] + totalReceipts[i]).toFixed(2));
+    cashPosition[i]   = parseFloat((totalAvailable[i] - totalPaidOut[i]).toFixed(2));
+    if (i < N-1) cashOnHand[i+1] = cashPosition[i];
+  }
+
+  return {
+    cashOnHand, totalReceipts, totalAvailable,
+    rm, repeatTool, boxIn, boxOut, packStick, outsource, transport,
+    subtotal, totalPaidOut, cashPosition,
+    sp
+  };
+}
+
+// ─────────────────────────────────────────────
+//  RENDERING HELPERS
+// ─────────────────────────────────────────────
+const f = v => (isNaN(v)||v==null) ? '' : parseFloat(v.toFixed(2));
+const fc = v => v===0 ? '–' : f(v);
+const cls = v => v < 0 ? 'val-neg' : '';
+const fmt = v => (v < 0 ? '–' : '') + '₹' + Math.abs(v).toFixed(2);
+const fmtL = v => (v < 0 ? '–₹' : '₹') + Math.abs(v).toFixed(2) + 'L';
+
+function sectionRow(title) {
+  const tr = document.createElement('tr');
+  tr.className = 'section-header';
+  tr.innerHTML = `<td colspan="15">▸ ${title}</td>`;
+  return tr;
+}
+
+function staticRow(trClass, cat, label, values, valCls, pctText='') {
+  const tr = document.createElement('tr');
+  tr.className = trClass;
+  let cells = values.map((v,i) => {
+    // Negative always wins — red overrides any default colour
+    const c = (v < 0) ? 'val-neg' : (valCls || cls(v));
+    return `<td class="col-val ${c}" data-static="${label}|${i}">${fc(v)}</td>`;
+  }).join('');
+  tr.innerHTML = `
+    <td class="col-cat">${cat}</td>
+    <td class="col-label">${label}</td>
+    <td class="col-pct">${pctText}</td>
+    ${cells}`;
+  return tr;
+}
+
+function inputRow(trClass, cat, label, key, values) {
+  const tr = document.createElement('tr');
+  tr.className = trClass;
+  let cells = values.map((v,i) => `
+    <td class="col-val">
+      <input class="cell-input" type="number" step="any" value="${f(v)}"
+        data-key="${key}" data-idx="${i}" oninput="onCellInput(this)" />
+    </td>`).join('');
+  tr.innerHTML = `
+    <td class="col-cat">${cat}</td>
+    <td class="col-label">${label}</td>
+    <td class="col-pct"></td>
+    ${cells}`;
+  return tr;
+}
+
+function pctInputRow(cat, label, pctKey, pctVal, computedVals) {
+  const tr = document.createElement('tr');
+  tr.className = 'row-pct';
+  let cells = computedVals.map((v,i) =>
+    `<td class="col-val val-pct" data-pct="${pctKey}|${i}">${fc(v)}</td>`
+  ).join('');
+  tr.innerHTML = `
+    <td class="col-cat">${cat}</td>
+    <td class="col-label">${label}</td>
+    <td class="col-pct">
+      <input class="pct-input" type="number" step="0.001" value="${pctVal}"
+        data-pctkey="${pctKey}" oninput="onPctInput(this)" />
+    </td>
+    ${cells}`;
+  return tr;
+}
+
+// ─────────────────────────────────────────────
+//  BUILD TABLE
+// ─────────────────────────────────────────────
+function buildTable(d) {
+  const tb = document.getElementById('cfBody');
+  tb.innerHTML = '';
+  const add = row => tb.appendChild(row);
+
+  add(sectionRow('OPENING BALANCE'));
+  add(staticRow('row-opening','','Cash on Hand (beginning of month)', d.cashOnHand, 'val-blue'));
+
+  add(sectionRow('CASH RECEIPTS  ·  Inputs'));
+  add(inputRow('row-input-hi','','Sales Plan',                   'salesPlan',        DATA.salesPlan));
+  add(inputRow('row-input',   '','Receipt from Sales',           'receiptFromSales', DATA.receiptFromSales));
+  add(inputRow('row-input',   '','Collections from GST Accounts','collectionsGst',   DATA.collectionsGst));
+  add(inputRow('row-input',   '','Loan / Other Cash Injection',  'loanInflow',       DATA.loanInflow));
+  add(staticRow('row-total',  '','TOTAL CASH RECEIPTS',          d.totalReceipts, 'val-blue'));
+  add(staticRow('row-avail',  '','Total Cash Available (before cash out)', d.totalAvailable, 'val-green'));
+
+  add(sectionRow('CASH PAID OUT'));
+  add(pctInputRow('Raw Material','RM HT / SS',                      'pctRM',          DATA.pctRM,          d.rm));
+  add(pctInputRow('Tooling',     'Repeat Tooling',                   'pctRepeatTool',  DATA.pctRepeatTool,  d.repeatTool));
+  add(pctInputRow('Packing',     'Boxes Inner',                      'pctBoxesInner',  DATA.pctBoxesInner,  d.boxIn));
+  add(pctInputRow('Packing',     'Boxes Outer',                      'pctBoxesOuter',  DATA.pctBoxesOuter,  d.boxOut));
+  add(pctInputRow('Packing',     'Packing Stickers / Straps / Covers','pctPackStickers',DATA.pctPackStickers,d.packStick));
+  add(pctInputRow('',            'Outsourcing Cost',                 'pctOutsource',   DATA.pctOutsource,   d.outsource));
+  add(pctInputRow('',            'Transportation',                   'pctTransport',   DATA.pctTransport,   d.transport));
+
+  add(inputRow('row-input','Tooling',    'New Tooling',                   'newTooling',      DATA.newTooling));
+  add(inputRow('row-input','Consumables','Quench Oil',                    'quenchOil',       DATA.quenchOil));
+  add(inputRow('row-input','Consumables','Lub Oil',                       'lubOil',          DATA.lubOil));
+  add(inputRow('row-input','Consumables','Innoline 17 & UCL',             'innoline',        DATA.innoline));
+  add(inputRow('row-input','Consumables','De-phosact',                    'dephosact',       DATA.dephosact));
+  add(inputRow('row-input','Consumables','Blackening Oil',                'blackeningOil',   DATA.blackeningOil));
+  add(inputRow('row-input','Consumables','Methanol',                      'methanol',        DATA.methanol));
+  add(inputRow('row-input','Consumables','LPG',                           'lpg',             DATA.lpg));
+  add(inputRow('row-input','Consumables','KMN04',                         'kmno4',           DATA.kmno4));
+  add(inputRow('row-input','Consumables','Caustic Soda',                  'causticSoda',     DATA.causticSoda));
+  add(inputRow('row-input','Consumables','Diesel',                        'diesel',          DATA.diesel));
+  add(inputRow('row-input','Consumables','RPO Oil',                       'rpoOil',          DATA.rpoOil));
+  add(inputRow('row-input','',          'Salaries',                       'salaries',        DATA.salaries));
+  add(inputRow('row-input','',          'Food',                           'food',            DATA.food));
+  add(inputRow('row-input','',          'Repairs & Maintenance',          'repairsMaint',    DATA.repairsMaint));
+  add(inputRow('row-input','',          'Advertising',                    'advertising',     DATA.advertising));
+  add(inputRow('row-input','',          'Car, Delivery & Travel',         'carDelivery',     DATA.carDelivery));
+  add(inputRow('row-input','',          'Accounting & Legal',             'accountingLegal', DATA.accountingLegal));
+  add(inputRow('row-input','',          'Rent',                           'rent',            DATA.rent));
+  add(inputRow('row-input','',          'Telephone',                      'telephone',       DATA.telephone));
+  add(inputRow('row-input','',          'EB',                             'eb',              DATA.eb));
+  add(inputRow('row-input','',          'Insurance',                      'insurance',       DATA.insurance));
+  add(inputRow('row-input','',          'Taxes (Real Estate, etc.)',      'taxes',           DATA.taxes));
+  add(inputRow('row-input','',          'Miscellaneous',                  'miscellaneous',   DATA.miscellaneous));
+  add(staticRow('row-subtotal','','SUBTOTAL', d.subtotal, ''));
+
+  add(inputRow('row-input','Financing','Loan Principal Payment',  'loanPrincipal',  DATA.loanPrincipal));
+  add(inputRow('row-input','Financing','Interest – Term Loan',    'interestTerm',   DATA.interestTerm));
+  add(inputRow('row-input','Financing','Interest – WC',           'interestWC',     DATA.interestWC));
+  add(inputRow('row-input','Financing','Other (Bank Usls)',        'otherBank',      DATA.otherBank));
+  add(inputRow('row-input','',        'Capital Purchase',         'capitalPurchase',DATA.capitalPurchase));
+  add(inputRow('row-input','',        'Other Startup Costs',      'otherStartup',   DATA.otherStartup));
+  add(inputRow('row-input','',        'Reserve and/or Escrow',    'reserveEscrow',  DATA.reserveEscrow));
+  add(inputRow('row-input','Financing','Unsecured Loan Repay',    'unsecuredLoan',  DATA.unsecuredLoan));
+
+  add(staticRow('row-total-out','','TOTAL CASH PAID OUT', d.totalPaidOut, 'val-red'));
+  add(sectionRow('CLOSING BALANCE'));
+  add(staticRow('row-closing','','Cash Position (end of month)', d.cashPosition, ''));
+}
+
+// ─────────────────────────────────────────────
+//  UPDATE static cells
+// ─────────────────────────────────────────────
+function updateStaticCells(d) {
+  document.querySelectorAll('[data-static]').forEach(el => {
+    const [label, idx] = el.dataset.static.split('|');
+    const i = parseInt(idx);
+    let v;
+    switch(label) {
+      case 'Cash on Hand (beginning of month)': v = d.cashOnHand[i]; break;
+      case 'TOTAL CASH RECEIPTS':               v = d.totalReceipts[i]; break;
+      case 'Total Cash Available (before cash out)': v = d.totalAvailable[i]; break;
+      case 'SUBTOTAL':                          v = d.subtotal[i]; break;
+      case 'TOTAL CASH PAID OUT':               v = d.totalPaidOut[i]; break;
+      case 'Cash Position (end of month)':      v = d.cashPosition[i]; break;
+    }
+    if (v !== undefined) {
+      el.textContent = fc(v);
+      el.className = 'col-val ' + (v < 0 ? 'val-neg' : (
+        label === 'Cash on Hand (beginning of month)' ? 'val-blue' :
+        label === 'TOTAL CASH RECEIPTS' ? 'val-blue' :
+        label === 'Total Cash Available (before cash out)' ? 'val-green' :
+        label === 'TOTAL CASH PAID OUT' ? 'val-red' : ''
+      ));
+    }
+  });
+
+  document.querySelectorAll('[data-pct]').forEach(el => {
+    const [key, idx] = el.dataset.pct.split('|');
+    const i = parseInt(idx);
+    let v;
+    switch(key) {
+      case 'pctRM':          v = d.rm[i]; break;
+      case 'pctRepeatTool':  v = d.repeatTool[i]; break;
+      case 'pctBoxesInner':  v = d.boxIn[i]; break;
+      case 'pctBoxesOuter':  v = d.boxOut[i]; break;
+      case 'pctPackStickers':v = d.packStick[i]; break;
+      case 'pctOutsource':   v = d.outsource[i]; break;
+      case 'pctTransport':   v = d.transport[i]; break;
+    }
+    if (v !== undefined) el.textContent = fc(v);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  ANALYTICS RENDERING
+// ═══════════════════════════════════════════════
+
+function updateKPIs(d) {
+  const totalRec = d.totalReceipts.reduce((a,b)=>a+b,0);
+  const totalOut = d.totalPaidOut.reduce((a,b)=>a+b,0);
+  const yearEnd  = d.cashPosition[N-1];
+  const negMo    = d.cashPosition.filter(v=>v<0).length;
+
+  document.getElementById('kpiTotalReceipts').textContent = '₹' + totalRec.toFixed(1) + 'L';
+  document.getElementById('kpiTotalOut').textContent      = '₹' + totalOut.toFixed(1) + 'L';
+
+  const yeEl = document.getElementById('kpiYearEnd');
+  yeEl.textContent = (yearEnd < 0 ? '–₹' : '₹') + Math.abs(yearEnd).toFixed(2) + 'L';
+  yeEl.className = 'kpi-value ' + (yearEnd >= 0 ? 'pos' : 'neg');
+
+  const nmEl = document.getElementById('kpiNegMonths');
+  nmEl.textContent = negMo + ' / 12';
+  nmEl.className = 'kpi-value ' + (negMo === 0 ? 'pos' : negMo > 3 ? 'neg' : '');
+}
+
+// ── MAIN COMBO CHART (line + bar) ──
+function drawMainChart(d) {
+  const g = document.getElementById('mainChartG');
+  g.innerHTML = '';
+  const W=680, H=210, PL=40, PR=10, PT=15, PB=40;
+  const cW = W - PL - PR, cH = H - PT - PB;
+
+  const receipts = d.totalReceipts;
+  const outs     = d.totalPaidOut;
+  const pos      = d.cashPosition;
+
+  const allVals = [...receipts,...outs,...pos];
+  const minV = Math.min(...allVals), maxV = Math.max(...allVals);
+  const range = maxV - minV || 1;
+
+  const bw = cW / N;
+  const xc = i => PL + bw * i + bw/2;
+  const yc = v => PT + cH - ((v - minV) / range) * cH;
+
+  // Zero line
+  if (minV < 0) {
+    const y0 = yc(0);
+    const zl = document.createElementNS('http://www.w3.org/2000/svg','line');
+    zl.setAttribute('x1',PL); zl.setAttribute('x2',W-PR);
+    zl.setAttribute('y1',y0); zl.setAttribute('y2',y0);
+    zl.setAttribute('stroke','#94a3b8'); zl.setAttribute('stroke-dasharray','4,3');
+    zl.setAttribute('stroke-width','1'); g.appendChild(zl);
+  }
+
+  // Grid lines
+  for (let gi=0; gi<=4; gi++) {
+    const gv = minV + (range * gi / 4);
+    const gy = yc(gv);
+    const gl = document.createElementNS('http://www.w3.org/2000/svg','line');
+    gl.setAttribute('x1',PL); gl.setAttribute('x2',W-PR);
+    gl.setAttribute('y1',gy); gl.setAttribute('y2',gy);
+    gl.setAttribute('stroke','#e2e8f0'); gl.setAttribute('stroke-width','1');
+    g.appendChild(gl);
+    const gt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    gt.setAttribute('x',PL-4); gt.setAttribute('y',gy+3);
+    gt.setAttribute('text-anchor','end'); gt.setAttribute('font-size','8');
+    gt.setAttribute('fill','#94a3b8'); gt.textContent = Math.round(gv);
+    g.appendChild(gt);
+  }
+
+  // Receipts area
+  const makeArea = (vals, color) => {
+    const y0 = Math.max(PT, Math.min(H-PB, yc(0)));
+    let d = `M ${xc(0)} ${y0}`;
+    vals.forEach((v,i) => { d += ` L ${xc(i)} ${yc(v)}`; });
+    d += ` L ${xc(N-1)} ${y0} Z`;
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',d); path.setAttribute('fill',color);
+    g.appendChild(path);
+  };
+
+  makeArea(receipts, 'rgba(99,102,241,0.12)');
+  makeArea(outs,     'rgba(239,68,68,0.10)');
+
+  // Line drawer
+  const makeLine = (vals, color, sw=2) => {
+    let d = '';
+    vals.forEach((v,i) => {
+      d += (i===0 ? 'M' : 'L') + ` ${xc(i)} ${yc(v)} `;
+    });
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',d); path.setAttribute('fill','none');
+    path.setAttribute('stroke',color); path.setAttribute('stroke-width',sw);
+    path.setAttribute('stroke-linejoin','round'); path.setAttribute('stroke-linecap','round');
+    g.appendChild(path);
+  };
+
+  makeLine(receipts, '#6366f1', 1.5);
+  makeLine(outs,     '#ef4444', 1.5);
+  makeLine(pos,      '#10b981', 2);
+
+  // Dots + labels for cash position
+  pos.forEach((v,i) => {
+    const cx = xc(i), cy = yc(v);
+    const neg = v < 0;
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',cx); circle.setAttribute('cy',cy);
+    circle.setAttribute('r','4');
+    circle.setAttribute('fill', neg ? '#ef4444' : '#10b981');
+    circle.setAttribute('stroke','#fff'); circle.setAttribute('stroke-width','1.5');
+    g.appendChild(circle);
+
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x',cx); lbl.setAttribute('y', neg ? cy+10 : cy-6);
+    lbl.setAttribute('text-anchor','middle'); lbl.setAttribute('font-size','7.5');
+    lbl.setAttribute('font-weight','700');
+    lbl.setAttribute('fill', neg ? '#dc2626' : '#059669');
+    lbl.textContent = v.toFixed(1);
+    g.appendChild(lbl);
+  });
+
+  // X labels
+  MONTHS.forEach((m,i) => {
+    const xt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    xt.setAttribute('x', xc(i)); xt.setAttribute('y', H - 5);
+    xt.setAttribute('text-anchor','middle'); xt.setAttribute('font-size','8');
+    xt.setAttribute('fill','#64748b'); xt.textContent = m.substring(0,3);
+    g.appendChild(xt);
+  });
+}
+
+// ── DONUT CHART ──
+function drawDonut(d) {
+  const svg = document.getElementById('donutChart');
+  svg.innerHTML = '';
+  const cx=70, cy=70, R=58, r=36;
+
+  // Cost categories
+  const sp = DATA.salesPlan;
+  const rmTotal     = d.rm.reduce((a,b)=>a+b,0);
+  const salTotal    = DATA.salaries.reduce((a,b)=>a+b,0);
+  const finTotal    = DATA.loanPrincipal.concat(DATA.interestTerm, DATA.interestWC, DATA.otherBank)
+                        .reduce((a,b)=>a+b,0) +
+                      DATA.unsecuredLoan.reduce((a,b)=>a+b,0);
+  const consTotal   = ['quenchOil','lubOil','innoline','dephosact','blackeningOil',
+                        'methanol','lpg','kmno4','causticSoda','diesel','rpoOil']
+                        .reduce((s,k)=>s+DATA[k].reduce((a,b)=>a+b,0), 0);
+  const transpTotal = d.transport.reduce((a,b)=>a+b,0) + d.outsource.reduce((a,b)=>a+b,0);
+  const otherTotal  = d.totalPaidOut.reduce((a,b)=>a+b,0)
+                        - rmTotal - salTotal - finTotal - consTotal - transpTotal;
+
+  const segments = [
+    { label:'Raw Material', value: rmTotal,    color:'#6366f1' },
+    { label:'Salaries',     value: salTotal,   color:'#10b981' },
+    { label:'Financing',    value: finTotal,   color:'#ef4444' },
+    { label:'Consumables',  value: consTotal,  color:'#f59e0b' },
+    { label:'Transport/OS', value: transpTotal,color:'#8b5cf6' },
+    { label:'Other Ops',    value: Math.max(0,otherTotal), color:'#06b6d4' },
+  ];
+
+  const total = segments.reduce((a,s)=>a+s.value,0);
+  if (!total) return;
+
+  let startAngle = -Math.PI/2;
+  const toRad = deg => deg * Math.PI/180;
+
+  segments.forEach(seg => {
+    const angle = (seg.value/total) * 2 * Math.PI;
+    const endAngle = startAngle + angle;
+    const x1 = cx + R*Math.cos(startAngle), y1 = cy + R*Math.sin(startAngle);
+    const x2 = cx + R*Math.cos(endAngle),   y2 = cy + R*Math.sin(endAngle);
+    const xi1= cx + r*Math.cos(startAngle), yi1= cy + r*Math.sin(startAngle);
+    const xi2= cx + r*Math.cos(endAngle),   yi2= cy + r*Math.sin(endAngle);
+    const lg = angle > Math.PI ? 1 : 0;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',
+      `M ${xi1} ${yi1} A ${r} ${r} 0 ${lg} 1 ${xi2} ${yi2}
+       L ${x2} ${y2} A ${R} ${R} 0 ${lg} 0 ${x1} ${y1} Z`);
+    path.setAttribute('fill', seg.color);
+    path.setAttribute('stroke','#fff');
+    path.setAttribute('stroke-width','1.5');
+    svg.appendChild(path);
+    startAngle = endAngle;
+  });
+
+  // Center label
+  const ct = document.createElementNS('http://www.w3.org/2000/svg','text');
+  ct.setAttribute('x',cx); ct.setAttribute('y',cy-5);
+  ct.setAttribute('text-anchor','middle'); ct.setAttribute('font-size','10');
+  ct.setAttribute('font-weight','800'); ct.setAttribute('fill','#1e293b');
+  ct.textContent = '₹' + (total/N).toFixed(0) + 'L';
+  svg.appendChild(ct);
+  const cs = document.createElementNS('http://www.w3.org/2000/svg','text');
+  cs.setAttribute('x',cx); cs.setAttribute('y',cy+8);
+  cs.setAttribute('text-anchor','middle'); cs.setAttribute('font-size','8');
+  cs.setAttribute('fill','#64748b'); cs.textContent = 'avg/mo';
+  svg.appendChild(cs);
+
+  // Legend
+  const dl = document.getElementById('donutLegend');
+  dl.innerHTML = '';
+  segments.forEach(seg => {
+    const pct = ((seg.value/total)*100).toFixed(1);
+    dl.innerHTML += `
+      <div class="donut-legend-item">
+        <div class="dl-name"><div class="dl-dot" style="background:${seg.color}"></div>${seg.label}</div>
+        <div class="dl-val">${pct}%</div>
+      </div>`;
+  });
+}
+
+// ── CASH POSITION BARS ──
+function drawCashPosBars(d) {
+  const container = document.getElementById('cashPosBars');
+  container.innerHTML = '';
+  const maxAbs = Math.max(...d.cashPosition.map(Math.abs), 1);
+
+  d.cashPosition.forEach((v,i) => {
+    const pct = Math.abs(v) / maxAbs * 100;
+    const neg = v < 0;
+    const div = document.createElement('div');
+    div.className = 'month-row';
+    div.innerHTML = `
+      <div class="mr-name">${MONTHS[i].substring(0,6)}</div>
+      <div class="mr-bar-wrap">
+        <div class="mr-bar" style="width:${pct.toFixed(1)}%;background:${neg?'#ef4444':'#10b981'}"></div>
+      </div>
+      <div class="mr-val ${neg?'neg':'pos'}">${v<0?'–₹':'₹'}${Math.abs(v).toFixed(2)}</div>`;
+    container.appendChild(div);
+  });
+}
+
+// ── RECEIPTS vs SALES PLAN CHART ──
+function drawPlanChart(d) {
+  const g = document.getElementById('planChartG');
+  g.innerHTML = '';
+  const W=280, H=200, PL=38, PR=8, PT=12, PB=36;
+  const cW=W-PL-PR, cH=H-PT-PB;
+
+  const sp = DATA.salesPlan;
+  const rec = d.totalReceipts;
+  const allV = [...sp,...rec];
+  const maxV = Math.max(...allV)||1;
+  const bw = cW / N;
+  const bwH = bw * 0.38;
+
+  // Grid
+  for (let gi=0;gi<=4;gi++) {
+    const gv = maxV*gi/4;
+    const gy = PT + cH - (gv/maxV)*cH;
+    const gl = document.createElementNS('http://www.w3.org/2000/svg','line');
+    gl.setAttribute('x1',PL); gl.setAttribute('x2',W-PR);
+    gl.setAttribute('y1',gy); gl.setAttribute('y2',gy);
+    gl.setAttribute('stroke','#e2e8f0'); gl.setAttribute('stroke-width','1');
+    g.appendChild(gl);
+    const gt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    gt.setAttribute('x',PL-3); gt.setAttribute('y',gy+3);
+    gt.setAttribute('text-anchor','end'); gt.setAttribute('font-size','7.5');
+    gt.setAttribute('fill','#94a3b8'); gt.textContent = Math.round(gv);
+    g.appendChild(gt);
+  }
+
+  // Bars
+  MONTHS.forEach((m,i) => {
+    const x = PL + bw*i;
+    const spH  = (sp[i]/maxV)*cH;
+    const recH = (rec[i]/maxV)*cH;
+
+    const r1 = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r1.setAttribute('x', x+2); r1.setAttribute('y', PT+cH-spH);
+    r1.setAttribute('width', bwH); r1.setAttribute('height', spH);
+    r1.setAttribute('fill','#6366f1'); r1.setAttribute('rx','2');
+    g.appendChild(r1);
+
+    const r2 = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r2.setAttribute('x', x+2+bwH+2); r2.setAttribute('y', PT+cH-recH);
+    r2.setAttribute('width', bwH); r2.setAttribute('height', recH);
+    r2.setAttribute('fill','#10b981'); r2.setAttribute('rx','2');
+    g.appendChild(r2);
+
+    const xt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    xt.setAttribute('x', x+bwH); xt.setAttribute('y', H-5);
+    xt.setAttribute('text-anchor','middle'); xt.setAttribute('font-size','7');
+    xt.setAttribute('fill','#64748b'); xt.textContent = m.substring(0,3);
+    g.appendChild(xt);
+  });
+}
+
+// ── COST TABLE ──
+function drawCostTable(d) {
+  const tbody = document.getElementById('costTableBody');
+  tbody.innerHTML = '';
+
+  const sp = DATA.salesPlan;
+  const rmAvg  = d.rm.reduce((a,b)=>a+b,0)/N;
+  const salAvg = DATA.salaries.reduce((a,b)=>a+b,0)/N;
+  const finAvg = (DATA.loanPrincipal.concat(DATA.interestTerm,DATA.interestWC,DATA.otherBank)
+                   .reduce((a,b)=>a+b,0) + DATA.unsecuredLoan.reduce((a,b)=>a+b,0)) / N;
+  const consAvg= ['quenchOil','lubOil','innoline','dephosact','blackeningOil',
+                   'methanol','lpg','kmno4','causticSoda','diesel','rpoOil']
+                   .reduce((s,k)=>s+DATA[k].reduce((a,b)=>a+b,0)/N, 0);
+  const trAvg  = (d.transport.reduce((a,b)=>a+b,0)+d.outsource.reduce((a,b)=>a+b,0))/N;
+  const ebAvg  = DATA.eb.reduce((a,b)=>a+b,0)/N;
+
+  const cats = [
+    {name:'Raw Material',  avg:rmAvg,   color:'#6366f1'},
+    {name:'Salaries',      avg:salAvg,  color:'#10b981'},
+    {name:'Financing',     avg:finAvg,  color:'#ef4444'},
+    {name:'Consumables',   avg:consAvg, color:'#f59e0b'},
+    {name:'Transport/OS',  avg:trAvg,   color:'#8b5cf6'},
+    {name:'Electricity',   avg:ebAvg,   color:'#06b6d4'},
+  ].sort((a,b)=>b.avg-a.avg);
+
+  const maxAvg = Math.max(...cats.map(c=>c.avg));
+
+  cats.forEach(c => {
+    const pct = (c.avg/maxAvg*100).toFixed(0);
+    tbody.innerHTML += `
+      <tr>
+        <td style="font-weight:600;color:#1e293b;font-size:10px">${c.name}</td>
+        <td style="text-align:right;font-weight:700;color:${c.color};font-size:10px">₹${c.avg.toFixed(2)}</td>
+        <td style="text-align:right;font-size:10px;color:#64748b">${(c.avg/(d.totalPaidOut.reduce((a,b)=>a+b,0)/N)*100).toFixed(1)}%</td>
+        <td><div class="mini-bar" style="width:${pct}%;background:${c.color}20;border:1px solid ${c.color};box-sizing:border-box"></div></td>
+      </tr>`;
+  });
+}
+
+// ── SUMMARY TABLE ──
+function drawSummaryTable(d) {
+  const tbody = document.getElementById('summaryTableBody');
+  tbody.innerHTML = '';
+
+  d.cashPosition.forEach((v,i) => {
+    const net = d.totalReceipts[i] - d.totalPaidOut[i];
+    const mom = i === 0 ? null : v - d.cashPosition[i-1];
+    const neg = v < 0;
+    const momHtml = mom === null ? '<td style="text-align:right;color:#94a3b8;font-size:10px">–</td>' :
+      `<td style="text-align:right;font-size:10px">
+        <span class="variance-pill ${mom>=0?'vp-up':'vp-down'}">
+          ${mom>=0?'▲':'▼'} ${Math.abs(mom).toFixed(2)}
+        </span>
+       </td>`;
+
+    tbody.innerHTML += `
+      <tr>
+        <td style="font-weight:700;color:#1e1b4b;font-size:11px">${MONTHS[i]}</td>
+        <td style="text-align:right;font-size:10px;color:#64748b">₹${DATA.salesPlan[i].toFixed(2)}</td>
+        <td style="text-align:right;font-size:10px;color:#1d4ed8;font-weight:600">₹${d.totalReceipts[i].toFixed(2)}</td>
+        <td style="text-align:right;font-size:10px;color:#059669;font-weight:600">₹${d.totalAvailable[i].toFixed(2)}</td>
+        <td style="text-align:right;font-size:10px;color:#b91c1c;font-weight:600">₹${d.totalPaidOut[i].toFixed(2)}</td>
+        <td style="text-align:right;font-size:10px;font-weight:700;color:${net>=0?'#059669':'#dc2626'}">${net<0?'–₹':'₹'}${Math.abs(net).toFixed(2)}</td>
+        <td style="text-align:right;font-size:11px;font-weight:800;color:${neg?'#dc2626':'#059669'}">${neg?'–₹':'₹'}${Math.abs(v).toFixed(2)}</td>
+        ${momHtml}
+      </tr>`;
+  });
+}
+
+// ── MASTER UPDATE ──
+function updateAnalytics(d) {
+  updateKPIs(d);
+  drawMainChart(d);
+  drawDonut(d);
+  drawCashPosBars(d);
+  drawPlanChart(d);
+  drawCostTable(d);
+  drawSummaryTable(d);
+  updateScenarios(d);
+  updateWhatIf();
+  updateStress();
+  updateBreakEven(d);
+  updateWC();
+  updateBurnRate(d);
+  updateSensitivity(d);
+}
+
+// ─────────────────────────────────────────────
+//  TAB NAVIGATION
+// ─────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.scenario-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ─────────────────────────────────────────────
+//  COMPUTE ENGINE (variant) — applies multipliers
+// ─────────────────────────────────────────────
+function computeWith(salesMult, rmMult, extraCash) {
+  const sp   = DATA.salesPlan.map(v => v * salesMult);
+  const ob   = (parseFloat(document.getElementById('openingBal').value) || 0) + extraCash;
+
+  const rm         = sp.map(v => parseFloat((v * DATA.pctRM * rmMult).toFixed(4)));
+  const repeatTool = sp.map(v => parseFloat((v * DATA.pctRepeatTool).toFixed(4)));
+  const boxIn      = sp.map(v => parseFloat((v * DATA.pctBoxesInner).toFixed(4)));
+  const boxOut     = sp.map(v => parseFloat((v * DATA.pctBoxesOuter).toFixed(4)));
+  const packStick  = sp.map(v => parseFloat((v * DATA.pctPackStickers).toFixed(4)));
+  const outsource  = sp.map(v => parseFloat((v * DATA.pctOutsource).toFixed(4)));
+  const transport  = sp.map(v => parseFloat((v * DATA.pctTransport).toFixed(4)));
+
+  const totalReceipts = Array.from({length:N},(_,i)=>
+    (DATA.receiptFromSales[i]*salesMult||0)+(DATA.collectionsGst[i]||0)+(DATA.loanInflow[i]||0)
+  );
+
+  const cashOnHand = Array(N).fill(0);
+  cashOnHand[0] = ob;
+
+  const subtotal = Array.from({length:N},(_,i)=>
+    rm[i] + DATA.newTooling[i] + repeatTool[i] +
+    DATA.quenchOil[i] + DATA.lubOil[i] + DATA.innoline[i] +
+    DATA.dephosact[i] + DATA.blackeningOil[i] + DATA.methanol[i] +
+    DATA.lpg[i] + DATA.kmno4[i] + DATA.causticSoda[i] + DATA.diesel[i] + DATA.rpoOil[i] +
+    boxIn[i] + boxOut[i] + packStick[i] +
+    DATA.salaries[i] + DATA.food[i] + DATA.repairsMaint[i] +
+    DATA.advertising[i] + DATA.carDelivery[i] + DATA.accountingLegal[i] +
+    DATA.rent[i] + DATA.telephone[i] + DATA.eb[i] +
+    DATA.insurance[i] + DATA.taxes[i] + outsource[i] + transport[i] +
+    DATA.miscellaneous[i]
+  );
+
+  const totalPaidOut = Array.from({length:N},(_,i)=>
+    subtotal[i] + DATA.loanPrincipal[i] + DATA.interestTerm[i] +
+    DATA.interestWC[i] + DATA.otherBank[i] +
+    DATA.capitalPurchase[i] + DATA.otherStartup[i] + DATA.reserveEscrow[i] +
+    DATA.unsecuredLoan[i]
+  );
+
+  const totalAvailable = Array(N).fill(0);
+  const cashPosition   = Array(N).fill(0);
+
+  for (let i=0; i<N; i++) {
+    totalAvailable[i] = parseFloat((cashOnHand[i] + totalReceipts[i]).toFixed(2));
+    cashPosition[i]   = parseFloat((totalAvailable[i] - totalPaidOut[i]).toFixed(2));
+    if (i < N-1) cashOnHand[i+1] = cashPosition[i];
+  }
+  return { cashOnHand, totalReceipts, totalAvailable, subtotal, totalPaidOut, cashPosition };
+}
+
+// ─────────────────────────────────────────────
+//  SCENARIO COMPARISON
+// ─────────────────────────────────────────────
+function updateScenarios(base) {
+  const best  = computeWith(1.20, 0.95, 0);
+  const worst = computeWith(0.75, 1.10, 0);
+
+  const scenDefs = [
+    { key:'best',  label:'🟢 Best Case', cls:'best',  d: best,
+      assumptions:'Sales +20%, RM cost –5%, all financing same' },
+    { key:'base',  label:'🔵 Base Case', cls:'base',  d: base,
+      assumptions:'Your current inputs — no adjustments applied' },
+    { key:'worst', label:'🔴 Worst Case', cls:'worst', d: worst,
+      assumptions:'Sales –25%, RM cost +10%, all financing same' },
+  ];
+
+  const container = document.getElementById('scenCards');
+  container.innerHTML = '';
+
+  scenDefs.forEach(sc => {
+    const totalRec = sc.d.totalReceipts.reduce((a,b)=>a+b,0);
+    const totalOut = sc.d.totalPaidOut.reduce((a,b)=>a+b,0);
+    const yearEnd  = sc.d.cashPosition[N-1];
+    const negMo    = sc.d.cashPosition.filter(v=>v<0).length;
+    const minPos   = Math.min(...sc.d.cashPosition);
+    const netFlow  = totalRec - totalOut;
+
+    container.innerHTML += `
+      <div class="scen-card ${sc.key}">
+        <h4 class="${sc.key}">${sc.label}</h4>
+        <div style="font-size:10px;color:#94a3b8;margin-bottom:10px;font-style:italic">${sc.assumptions}</div>
+        <div class="scen-row"><span class="sr-label">Total Receipts</span><span class="sr-val blue">₹${totalRec.toFixed(1)}L</span></div>
+        <div class="scen-row"><span class="sr-label">Total Cash Out</span><span class="sr-val neg">₹${totalOut.toFixed(1)}L</span></div>
+        <div class="scen-row"><span class="sr-label">Net Annual Flow</span><span class="sr-val ${netFlow>=0?'pos':'neg'}">${netFlow<0?'–₹':'₹'}${Math.abs(netFlow).toFixed(1)}L</span></div>
+        <div class="scen-row"><span class="sr-label">Year-End Cash</span><span class="sr-val ${yearEnd>=0?'pos':'neg'}">${yearEnd<0?'–₹':'₹'}${Math.abs(yearEnd).toFixed(2)}L</span></div>
+        <div class="scen-row"><span class="sr-label">Negative Months</span><span class="sr-val ${negMo===0?'pos':negMo>3?'neg':''}">${negMo} / 12</span></div>
+        <div class="scen-row"><span class="sr-label">Lowest Cash Point</span><span class="sr-val ${minPos>=0?'pos':'neg'}">${minPos<0?'–₹':'₹'}${Math.abs(minPos).toFixed(2)}L</span></div>
+      </div>`;
+  });
+
+  // Draw comparison chart
+  drawScenCompChart(best.cashPosition, base.cashPosition, worst.cashPosition);
+}
+
+function drawScenCompChart(bestP, baseP, worstP) {
+  const g = document.getElementById('scenCompG');
+  g.innerHTML = '';
+  const W=740, H=220, PL=42, PR=10, PT=15, PB=40;
+  const cW=W-PL-PR, cH=H-PT-PB;
+
+  const allV = [...bestP,...baseP,...worstP];
+  const minV = Math.min(...allV); const maxV = Math.max(...allV);
+  const range = maxV-minV||1;
+  const bw = cW/N;
+  const xc = i => PL+bw*i+bw/2;
+  const yc = v => PT+cH-((v-minV)/range)*cH;
+
+  // Zero line
+  if (minV < 0) {
+    const y0 = yc(0);
+    const zl = document.createElementNS('http://www.w3.org/2000/svg','line');
+    zl.setAttribute('x1',PL); zl.setAttribute('x2',W-PR);
+    zl.setAttribute('y1',y0); zl.setAttribute('y2',y0);
+    zl.setAttribute('stroke','#94a3b8'); zl.setAttribute('stroke-dasharray','4,3');
+    zl.setAttribute('stroke-width','1'); g.appendChild(zl);
+    const zt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    zt.setAttribute('x',PL-3); zt.setAttribute('y',y0+3);
+    zt.setAttribute('text-anchor','end'); zt.setAttribute('font-size','8');
+    zt.setAttribute('fill','#94a3b8'); zt.textContent = '0';
+    g.appendChild(zt);
+  }
+
+  // Grid
+  for(let gi=0;gi<=4;gi++){
+    const gv=minV+(range*gi/4); const gy=yc(gv);
+    const gl=document.createElementNS('http://www.w3.org/2000/svg','line');
+    gl.setAttribute('x1',PL); gl.setAttribute('x2',W-PR);
+    gl.setAttribute('y1',gy); gl.setAttribute('y2',gy);
+    gl.setAttribute('stroke','#e2e8f0'); gl.setAttribute('stroke-width','1'); g.appendChild(gl);
+    const gt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    gt.setAttribute('x',PL-4); gt.setAttribute('y',gy+3);
+    gt.setAttribute('text-anchor','end'); gt.setAttribute('font-size','8');
+    gt.setAttribute('fill','#94a3b8'); gt.textContent=Math.round(gv); g.appendChild(gt);
+  }
+
+  const makeLine=(vals,color,sw,dash)=>{
+    let d='';
+    vals.forEach((v,i)=>{ d+=(i===0?'M':'L')+` ${xc(i)} ${yc(v)} `; });
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',d); path.setAttribute('fill','none');
+    path.setAttribute('stroke',color); path.setAttribute('stroke-width',sw||2);
+    path.setAttribute('stroke-linejoin','round'); path.setAttribute('stroke-linecap','round');
+    if(dash) path.setAttribute('stroke-dasharray',dash);
+    g.appendChild(path);
+  };
+
+  // Shaded area between best & worst
+  let areaD = `M ${xc(0)} ${yc(bestP[0])}`;
+  for(let i=1;i<N;i++) areaD+=` L ${xc(i)} ${yc(bestP[i])}`;
+  for(let i=N-1;i>=0;i--) areaD+=` L ${xc(i)} ${yc(worstP[i])}`;
+  areaD+=' Z';
+  const areaPath=document.createElementNS('http://www.w3.org/2000/svg','path');
+  areaPath.setAttribute('d',areaD); areaPath.setAttribute('fill','rgba(99,102,241,0.07)');
+  g.appendChild(areaPath);
+
+  makeLine(worstP,'#ef4444',1.5,'5,3');
+  makeLine(baseP,'#6366f1',2);
+  makeLine(bestP,'#10b981',1.5);
+
+  // Month labels
+  MONTHS.forEach((m,i)=>{
+    const xt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    xt.setAttribute('x',xc(i)); xt.setAttribute('y',H-6);
+    xt.setAttribute('text-anchor','middle'); xt.setAttribute('font-size','8');
+    xt.setAttribute('fill','#94a3b8'); xt.textContent=m.substring(0,4); g.appendChild(xt);
+  });
+}
+
+// ─────────────────────────────────────────────
+//  WHAT-IF SLIDERS
+// ─────────────────────────────────────────────
+function updateWhatIf() {
+  const salesPct  = parseFloat(document.getElementById('wiSales').value)/100;
+  const delayMo   = parseInt(document.getElementById('wiDelay').value);
+  const extraLoan = parseFloat(document.getElementById('wiLoan').value)||0;
+  const rmPct     = parseFloat(document.getElementById('wiRM').value)/100;
+  const salPct    = parseFloat(document.getElementById('wiSal').value)/100;
+  const ohPct     = parseFloat(document.getElementById('wiOH').value)/100;
+
+  // Update badges
+  const pctBadge = (id, v, prefix='') => {
+    const el = document.getElementById(id);
+    const sign = v>0?'+':'';
+    el.textContent = prefix+(v===0?'0%':sign+Math.round(v*100)+'%');
+    el.className = 'slider-val-badge ' + (v>0?'pos':v<0?'neg':'');
+  };
+  pctBadge('wiSalesBadge', salesPct);
+  pctBadge('wiRMBadge', rmPct);
+  pctBadge('wiSalBadge', salPct);
+  pctBadge('wiOHBadge', ohPct);
+  document.getElementById('wiDelayBadge').textContent = delayMo + ' mo';
+  document.getElementById('wiLoanBadge').textContent  = '₹' + extraLoan + 'L';
+
+  // Compute what-if
+  const base = compute();
+  const ob   = (parseFloat(document.getElementById('openingBal').value)||0) + extraLoan;
+  const sp   = DATA.salesPlan;
+
+  // Shift receipts by delay months
+  let adjReceipts = DATA.receiptFromSales.map(v => v*(1+salesPct));
+  if (delayMo > 0) {
+    const shifted = Array(N).fill(0);
+    for(let i=0;i<N;i++) if(i+delayMo<N) shifted[i+delayMo]=adjReceipts[i];
+    adjReceipts = shifted;
+  }
+
+  const adjRM = DATA.pctRM * (1+rmPct);
+  const adjSal = DATA.salaries.map(v => v*(1+salPct));
+  const adjOverhead = ['food','repairsMaint','advertising','carDelivery','eb','accountingLegal','rent','telephone'];
+
+  const cashOnHand = Array(N).fill(0);
+  cashOnHand[0] = ob;
+  const totalReceipts  = Array(N).fill(0);
+  const totalPaidOut   = Array(N).fill(0);
+  const cashPosition   = Array(N).fill(0);
+  const totalAvailable = Array(N).fill(0);
+
+  for(let i=0;i<N;i++){
+    const spv = sp[i];
+    const rm         = spv*adjRM;
+    const repeatTool = spv*DATA.pctRepeatTool;
+    const boxIn      = spv*DATA.pctBoxesInner;
+    const boxOut     = spv*DATA.pctBoxesOuter;
+    const packStick  = spv*DATA.pctPackStickers;
+    const outsource  = spv*DATA.pctOutsource;
+    const transport  = spv*DATA.pctTransport;
+
+    const ohSum = adjOverhead.reduce((s,k) => s + DATA[k][i]*(1+ohPct), 0);
+    const fixedSub = DATA.newTooling[i]+DATA.quenchOil[i]+DATA.lubOil[i]+DATA.innoline[i]+
+                     DATA.dephosact[i]+DATA.blackeningOil[i]+DATA.methanol[i]+DATA.lpg[i]+
+                     DATA.kmno4[i]+DATA.causticSoda[i]+DATA.diesel[i]+DATA.rpoOil[i]+
+                     repeatTool+boxIn+boxOut+packStick+outsource+transport+
+                     DATA.insurance[i]+DATA.taxes[i]+DATA.miscellaneous[i];
+
+    const sub = rm + fixedSub + adjSal[i] + ohSum;
+    const fin = DATA.loanPrincipal[i]+DATA.interestTerm[i]+DATA.interestWC[i]+DATA.otherBank[i]+
+                DATA.capitalPurchase[i]+DATA.otherStartup[i]+DATA.reserveEscrow[i]+DATA.unsecuredLoan[i];
+
+    totalReceipts[i]  = (adjReceipts[i]||0) + (DATA.collectionsGst[i]||0) + (DATA.loanInflow[i]||0);
+    totalPaidOut[i]   = sub + fin;
+    totalAvailable[i] = cashOnHand[i] + totalReceipts[i];
+    cashPosition[i]   = totalAvailable[i] - totalPaidOut[i];
+    if(i<N-1) cashOnHand[i+1] = cashPosition[i];
+  }
+
+  const baseTR   = base.totalReceipts.reduce((a,b)=>a+b,0);
+  const baseTO   = base.totalPaidOut.reduce((a,b)=>a+b,0);
+  const baseYE   = base.cashPosition[N-1];
+  const baseNeg  = base.cashPosition.filter(v=>v<0).length;
+  const adjTR    = totalReceipts.reduce((a,b)=>a+b,0);
+  const adjTO    = totalPaidOut.reduce((a,b)=>a+b,0);
+  const adjYE    = cashPosition[N-1];
+  const adjNeg   = cashPosition.filter(v=>v<0).length;
+
+  const setWI = (id, val, delta, fmt='₹') => {
+    const el = document.getElementById(id);
+    el.textContent = (val<0?'–'+fmt:fmt) + Math.abs(val).toFixed(1)+'L';
+    el.className = 'wi-impact-val ' + (val>=0?'pos':'neg');
+    const de = document.getElementById(id+'D');
+    const sign = delta>=0?'▲ +':'▼ ';
+    de.textContent = sign+Math.abs(delta).toFixed(1)+'L vs base';
+    de.className   = 'wi-impact-delta ' + (delta>=0?'pos':'neg');
+  };
+  setWI('wiTotalRec', adjTR, adjTR-baseTR);
+  setWI('wiTotalOut', adjTO, -(adjTO-baseTO));
+  setWI('wiYearEnd',  adjYE, adjYE-baseYE);
+  document.getElementById('wiNegMo').textContent = adjNeg+' / 12';
+  document.getElementById('wiNegMo').className   = 'wi-impact-val '+(adjNeg===0?'pos':adjNeg>3?'neg':'');
+  const negDelta = adjNeg-baseNeg;
+  const nd = document.getElementById('wiNegMoD');
+  nd.textContent = (negDelta===0?'Same as base':(negDelta>0?'▼ +':'▲ ')+Math.abs(negDelta)+' months vs base');
+  nd.className   = 'wi-impact-delta '+(negDelta<=0?'pos':'neg');
+
+  // Draw chart
+  drawTwoLineChart('wiChartG', base.cashPosition, cashPosition, '#6366f1', '#f59e0b', 680, 200, 40, 10, 15, 35);
+}
+
+// ─────────────────────────────────────────────
+//  STRESS TEST
+// ─────────────────────────────────────────────
+function updateStress() {
+  const spikeMo   = parseInt(document.getElementById('stressSpikeMo').value);
+  const spikeAmt  = parseFloat(document.getElementById('stressSpikeAmt').value)||0;
+  const rateRise  = parseFloat(document.getElementById('stressRateRise').value)||0;
+  const delay     = parseInt(document.getElementById('stressDelay').value)||0;
+  const extraLoan = parseFloat(document.getElementById('stressExtraLoan').value)||0;
+
+  const base = compute();
+  const ob   = parseFloat(document.getElementById('openingBal').value)||0;
+  const bpsEffect = rateRise/10000;
+
+  const cashOnHand   = Array(N).fill(0);
+  cashOnHand[0]      = ob;
+  const stressOut    = Array(N).fill(0);
+  const stressPos    = Array(N).fill(0);
+  const stressAvail  = Array(N).fill(0);
+  const stressLoanExtra = Array(N).fill(0);
+
+  for(let i=0;i<N;i++){
+    let extra = 0;
+    if(spikeMo >= 0 && i === spikeMo) extra += spikeAmt;
+    extra += (DATA.interestTerm[i]+DATA.interestWC[i]+DATA.otherBank[i])*bpsEffect;
+    if(i===0) extra += extraLoan > 0 ? 0 : 0; // extra loan reduces cash need
+    stressLoanExtra[i] = extra;
+
+    // Shift principal payments by delay
+    let principalIdx = i - delay;
+    const shiftedPrincipal = principalIdx >= 0 ? DATA.loanPrincipal[principalIdx] : 0;
+    const basePrincipal    = DATA.loanPrincipal[i];
+
+    const baseFin = DATA.interestTerm[i]+DATA.interestWC[i]+DATA.otherBank[i]+
+                    DATA.capitalPurchase[i]+DATA.otherStartup[i]+DATA.reserveEscrow[i]+
+                    DATA.unsecuredLoan[i];
+
+    stressOut[i]   = base.subtotal[i] + shiftedPrincipal + baseFin + extra;
+    const receipts = base.totalReceipts[i] + (i===0?extraLoan:0);
+    stressAvail[i] = cashOnHand[i] + receipts;
+    stressPos[i]   = stressAvail[i] - stressOut[i];
+    if(i<N-1) cashOnHand[i+1] = stressPos[i];
+  }
+
+  const baseYE    = base.cashPosition[N-1];
+  const stressYE  = stressPos[N-1];
+  const baseNeg   = base.cashPosition.filter(v=>v<0).length;
+  const stressNeg = stressPos.filter(v=>v<0).length;
+  const worstIdx  = stressPos.indexOf(Math.min(...stressPos));
+
+  const fmtV = (v,id,cls) => {
+    const el = document.getElementById(id);
+    el.textContent = (v<0?'–₹':'₹')+Math.abs(v).toFixed(2)+'L';
+    el.className   = 'srb-val '+(v>=0?'pos':'neg');
+  };
+  fmtV(baseYE,  'stBaseYE');
+  fmtV(stressYE,'stStressYE');
+  const imp = stressYE-baseYE;
+  const impEl = document.getElementById('stImpact');
+  impEl.textContent = (imp>=0?'+₹':'–₹')+Math.abs(imp).toFixed(2)+'L';
+  impEl.className   = 'srb-val '+(imp>=0?'pos':'neg');
+  document.getElementById('stBaseNeg').textContent   = baseNeg+' / 12';
+  document.getElementById('stBaseNeg').className     = 'srb-val '+(baseNeg===0?'pos':baseNeg>3?'neg':'warn');
+  document.getElementById('stStressNeg').textContent = stressNeg+' / 12';
+  document.getElementById('stStressNeg').className   = 'srb-val '+(stressNeg===0?'pos':stressNeg>3?'neg':'warn');
+  const wmEl = document.getElementById('stWorstMo');
+  wmEl.textContent = MONTHS[worstIdx];
+  wmEl.className   = 'srb-val '+(stressPos[worstIdx]>=0?'pos':'neg');
+
+  // Loan schedule table
+  const tbody = document.getElementById('stressLoanBody');
+  tbody.innerHTML = '';
+  for(let i=0;i<N;i++){
+    const baseFin   = DATA.loanPrincipal[i]+DATA.interestTerm[i]+DATA.interestWC[i]+DATA.otherBank[i];
+    const stressFin = stressOut[i] - base.subtotal[i];
+    const diff      = stressFin - baseFin;
+    tbody.innerHTML += `<tr>
+      <td style="font-weight:700;color:#1e1b4b">${MONTHS[i]}</td>
+      <td style="text-align:right;color:#64748b">₹${DATA.loanPrincipal[i].toFixed(2)}</td>
+      <td style="text-align:right;color:#64748b">₹${(DATA.interestTerm[i]+DATA.interestWC[i]+DATA.otherBank[i]).toFixed(2)}</td>
+      <td style="text-align:right;font-weight:700">₹${baseFin.toFixed(2)}</td>
+      <td style="text-align:right;font-weight:700;color:#ef4444">₹${stressFin.toFixed(2)}</td>
+      <td style="text-align:right;font-weight:700;color:${diff>0?'#dc2626':'#059669'}">${diff>0?'+':''} ₹${diff.toFixed(2)}</td>
+      <td style="text-align:right;font-weight:800;color:${stressPos[i]<0?'#dc2626':'#059669'}">${stressPos[i]<0?'–₹':'₹'}${Math.abs(stressPos[i]).toFixed(2)}</td>
+    </tr>`;
+  }
+
+  drawTwoLineChart('stressChartG', base.cashPosition, stressPos, '#6366f1', '#ef4444', 380, 160, 36, 8, 12, 30);
+}
+
+// ─────────────────────────────────────────────
+//  BREAK-EVEN & RUNWAY
+// ─────────────────────────────────────────────
+function updateBreakEven(d) {
+  // Fixed costs (not sales-dependent): salaries, finance, overhead
+  const fixedMonthly = Array.from({length:N},(_,i)=>
+    DATA.salaries[i]+DATA.food[i]+DATA.repairsMaint[i]+DATA.advertising[i]+
+    DATA.carDelivery[i]+DATA.accountingLegal[i]+DATA.rent[i]+DATA.telephone[i]+
+    DATA.eb[i]+DATA.insurance[i]+DATA.taxes[i]+DATA.miscellaneous[i]+
+    DATA.loanPrincipal[i]+DATA.interestTerm[i]+DATA.interestWC[i]+DATA.otherBank[i]+
+    DATA.capitalPurchase[i]+DATA.otherStartup[i]+DATA.reserveEscrow[i]+DATA.unsecuredLoan[i]+
+    DATA.newTooling[i]
+  );
+
+  const avgFixed    = fixedMonthly.reduce((a,b)=>a+b,0)/N;
+  const varRatio    = DATA.pctRM + DATA.pctRepeatTool + DATA.pctBoxesInner +
+                      DATA.pctBoxesOuter + DATA.pctPackStickers +
+                      DATA.pctOutsource + DATA.pctTransport;
+  const contribMgn  = 1 - varRatio;
+  const beRev       = contribMgn > 0 ? avgFixed / contribMgn : Infinity;
+  const avgRec      = d.totalReceipts.reduce((a,b)=>a+b,0) / N;
+  const safetyMgn   = ((avgRec - beRev) / beRev * 100);
+
+  document.getElementById('beFixedCosts').textContent   = '₹'+avgFixed.toFixed(2)+'L/mo';
+  document.getElementById('beVarRatio').textContent     = (varRatio*100).toFixed(1)+'% of sales';
+  document.getElementById('beContribMargin').textContent= (contribMgn*100).toFixed(1)+'%';
+  document.getElementById('beRevRequired').textContent  = '₹'+beRev.toFixed(1)+'L/mo';
+  document.getElementById('beRevYear').textContent      = '₹'+(beRev*12).toFixed(1)+'L/yr';
+  document.getElementById('beActualRev').textContent    = '₹'+avgRec.toFixed(1)+'L/mo';
+  const smEl = document.getElementById('beSafetyMargin');
+  smEl.textContent = (safetyMgn>=0?'+':'')+safetyMgn.toFixed(1)+'%';
+  smEl.className   = 'bsr-val '+(safetyMgn>=10?'pos':safetyMgn>=0?'warn':'neg');
+
+  // Break-even chart
+  const g  = document.getElementById('beChartG');
+  g.innerHTML='';
+  const W=400, H=180, PL=36, PR=10, PT=12, PB=32;
+  const cW=W-PL-PR, cH=H-PT-PB;
+  const allV = [...d.totalReceipts, beRev];
+  const maxV = Math.max(...allV)||1;
+  const bw=cW/N; const xc=i=>PL+bw*i+bw/2; const yc=v=>PT+cH-(v/maxV)*cH;
+
+  // BE line
+  const bey = yc(beRev);
+  const beline = document.createElementNS('http://www.w3.org/2000/svg','line');
+  beline.setAttribute('x1',PL); beline.setAttribute('x2',W-PR);
+  beline.setAttribute('y1',bey); beline.setAttribute('y2',bey);
+  beline.setAttribute('stroke','#ef4444'); beline.setAttribute('stroke-dasharray','6,3');
+  beline.setAttribute('stroke-width','1.5'); beline.setAttribute('opacity','0.7'); g.appendChild(beline);
+
+  // Receipt bars
+  d.totalReceipts.forEach((v,i)=>{
+    const bh=(v/maxV)*cH; const bx=PL+bw*i+bw*0.1;
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',bx); rect.setAttribute('y',PT+cH-bh);
+    rect.setAttribute('width',bw*0.8); rect.setAttribute('height',bh);
+    rect.setAttribute('fill',v>=beRev?'rgba(99,102,241,0.7)':'rgba(239,68,68,0.5)');
+    rect.setAttribute('rx','2'); g.appendChild(rect);
+    const xt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    xt.setAttribute('x',bx+bw*0.4); xt.setAttribute('y',H-4);
+    xt.setAttribute('text-anchor','middle'); xt.setAttribute('font-size','7');
+    xt.setAttribute('fill','#94a3b8'); xt.textContent=MONTHS[i].substring(0,3); g.appendChild(xt);
+  });
+
+  // Runway
+  const avgBurn = (d.totalPaidOut.reduce((a,b)=>a+b,0) - d.totalReceipts.reduce((a,b)=>a+b,0)) / N;
+  const curCash = d.cashPosition[N-1];
+  const runway  = avgBurn > 0 ? curCash / avgBurn : 99;
+  const minReserve = Math.abs(avgBurn) * 3;
+
+  document.getElementById('rwCurrentCash').textContent = (curCash<0?'–₹':'₹')+Math.abs(curCash).toFixed(2)+'L';
+  document.getElementById('rwAvgBurn').textContent     = (avgBurn<0?'Net Surplus ':'Burning ')+'₹'+Math.abs(avgBurn).toFixed(2)+'L/mo';
+  document.getElementById('rwMonths').textContent      = avgBurn<=0?'∞ (cash positive)':Math.max(0,runway).toFixed(1)+' months';
+  document.getElementById('rwMinReserve').textContent  = '₹'+minReserve.toFixed(2)+'L';
+
+  const endDate = new Date(2027,6); // Jul 2027
+  if(avgBurn>0) endDate.setMonth(endDate.getMonth()-Math.round(runway));
+  document.getElementById('rwEndDate').textContent     = avgBurn<=0?'N/A – Positive':endDate.toLocaleDateString('en-IN',{month:'short',year:'numeric'});
+
+  const belowReserve = d.cashPosition.filter(v=>v<minReserve).length;
+  const brEl = document.getElementById('rwBelowReserve');
+  brEl.textContent = belowReserve+' / 12 months';
+  brEl.className   = 'bsr-val '+(belowReserve===0?'pos':belowReserve>4?'neg':'warn');
+
+  const pct = Math.min(100, avgBurn<=0?100:Math.max(0,(runway/12)*100));
+  const fill = document.getElementById('rwFill');
+  fill.style.width     = pct+'%';
+  fill.style.background= pct>=60?'#10b981':pct>=30?'#f59e0b':'#ef4444';
+  document.getElementById('rwPctLabel').textContent = avgBurn<=0?'Cash Positive ✓':Math.round(pct)+'% of 12mo';
+
+  const pills = document.getElementById('rwMonthPills');
+  pills.innerHTML = '';
+  d.cashPosition.forEach((v,i)=>{
+    const cls = v<0?'danger':v<minReserve?'warn':'';
+    pills.innerHTML += `<div class="runway-month-pill ${cls}">${MONTHS[i]}: ₹${v.toFixed(1)}L</div>`;
+  });
+}
+
+// ─────────────────────────────────────────────
+//  WORKING CAPITAL
+// ─────────────────────────────────────────────
+function updateWC() {
+  const dso       = parseFloat(document.getElementById('wcDSO').value)||45;
+  const creditSal = parseFloat(document.getElementById('wcCreditSales').value)||200;
+  const dpo       = parseFloat(document.getElementById('wcDPO').value)||30;
+  const purchases = parseFloat(document.getElementById('wcPurchases').value)||100;
+  const dio       = parseFloat(document.getElementById('wcDIO').value)||20;
+
+  const receivables  = (dso/30)*creditSal;
+  const payables     = (dpo/30)*purchases;
+  const dsoSaving    = (10/30)*creditSal;
+  const dpoBenefit   = (10/30)*purchases;
+  const ccc          = dso + dio - dpo;
+  const d            = compute();
+  const avgCash      = d.cashPosition.reduce((a,b)=>a+b,0)/N;
+  const wcRequired   = receivables - payables;
+  const wcGap        = wcRequired - avgCash;
+  const currentRatio = avgCash > 0 ? (avgCash+receivables)/Math.max(payables,1) : 0;
+
+  document.getElementById('wcDSOVal').textContent    = dso+' days';
+  document.getElementById('wcReceivables').textContent = '₹'+receivables.toFixed(2)+'L tied up';
+  document.getElementById('wcDSOSaving').textContent = '+₹'+dsoSaving.toFixed(2)+'L freed';
+  document.getElementById('wcDSOAnnual').textContent = '+₹'+(dsoSaving*12).toFixed(1)+'L/yr';
+  document.getElementById('wcDPOVal').textContent    = dpo+' days';
+  document.getElementById('wcPayables').textContent  = '₹'+payables.toFixed(2)+'L outstanding';
+  document.getElementById('wcDPOBenefit').textContent= '+₹'+dpoBenefit.toFixed(2)+'L benefit';
+  document.getElementById('wcDPOAnnual').textContent = '+₹'+(dpoBenefit*12).toFixed(1)+'L/yr';
+  document.getElementById('wcCCC').textContent       = ccc.toFixed(0)+' days';
+  const cccEl = document.getElementById('wcCCCRating');
+  cccEl.textContent = ccc<=30?'Excellent':ccc<=60?'Good':ccc<=90?'Fair':'Stretched';
+  cccEl.className   = 'wm-val '+(ccc<=30?'good':ccc<=60?'good':ccc<=90?'warn':'bad');
+  document.getElementById('wcRequired').textContent  = (wcRequired<0?'–₹':'₹')+Math.abs(wcRequired).toFixed(2)+'L';
+  document.getElementById('wcAvailCash').textContent = (avgCash<0?'–₹':'₹')+Math.abs(avgCash).toFixed(2)+'L avg';
+  const gapEl = document.getElementById('wcGap');
+  gapEl.textContent = (wcGap<0?'Surplus ₹':'Deficit ₹')+Math.abs(wcGap).toFixed(2)+'L';
+  gapEl.className   = 'wm-val '+(wcGap<=0?'good':wcGap<20?'warn':'bad');
+  const crEl = document.getElementById('wcCurrentRatio');
+  crEl.textContent  = currentRatio.toFixed(2)+'×';
+  crEl.className    = 'wm-val '+(currentRatio>=2?'good':currentRatio>=1?'warn':'bad');
+}
+
+// ─────────────────────────────────────────────
+//  BURN RATE
+// ─────────────────────────────────────────────
+function updateBurnRate(d) {
+  const tbody = document.getElementById('burnTableBody');
+  tbody.innerHTML = '';
+
+  const netFlows = d.totalReceipts.map((r,i) => r - d.totalPaidOut[i]);
+  const rolling3 = Array(N).fill(null);
+  for(let i=2;i<N;i++) rolling3[i] = (netFlows[i]+netFlows[i-1]+netFlows[i-2])/3;
+  let cumulative = 0;
+
+  netFlows.forEach((v,i)=>{
+    cumulative += v;
+    const avg   = rolling3[i];
+    const status= v>=0?'Positive':v>-20?'Caution':'Burning';
+    const heat  = v>=0?'#dcfce7;color:#15803d':v>-20?'#fef3c7;color:#92400e':'#fee2e2;color:#b91c1c';
+
+    tbody.innerHTML += `<tr>
+      <td>${MONTHS[i]}</td>
+      <td style="text-align:right;color:#4f46e5;font-weight:600">₹${d.totalReceipts[i].toFixed(2)}</td>
+      <td style="text-align:right;color:#dc2626;font-weight:600">₹${d.totalPaidOut[i].toFixed(2)}</td>
+      <td style="text-align:right;font-weight:700;color:${v>=0?'#059669':'#dc2626'}">${v<0?'–₹':'₹'}${Math.abs(v).toFixed(2)}</td>
+      <td style="text-align:right;font-weight:700;color:#d97706">${avg!==null?(avg<0?'–₹':'₹')+Math.abs(avg).toFixed(2):'–'}</td>
+      <td style="text-align:right;font-weight:700;color:${cumulative>=0?'#059669':'#dc2626'}">${cumulative<0?'–₹':'₹'}${Math.abs(cumulative).toFixed(2)}</td>
+      <td style="text-align:center"><span class="heat-cell" style="background:${heat}">${status}</span></td>
+    </tr>`;
+  });
+
+  // Burn chart
+  const g = document.getElementById('burnChartG');
+  g.innerHTML = '';
+  const W=360, H=200, PL=36, PR=10, PT=14, PB=34;
+  const cW=W-PL-PR, cH=H-PT-PB;
+  const allV=[...netFlows,...rolling3.filter(v=>v!==null)];
+  const minV=Math.min(...allV)||0; const maxV=Math.max(...allV)||1;
+  const range=maxV-minV||1;
+  const bw=cW/N; const xc=i=>PL+bw*i+bw/2; const yc=v=>PT+cH-((v-minV)/range)*cH;
+
+  if(minV<0){
+    const y0=yc(0);
+    const zl=document.createElementNS('http://www.w3.org/2000/svg','line');
+    zl.setAttribute('x1',PL); zl.setAttribute('x2',W-PR);
+    zl.setAttribute('y1',y0); zl.setAttribute('y2',y0);
+    zl.setAttribute('stroke','#94a3b8'); zl.setAttribute('stroke-dasharray','4,3');
+    zl.setAttribute('stroke-width','1'); g.appendChild(zl);
+  }
+  for(let gi=0;gi<=3;gi++){
+    const gv=minV+(range*gi/3); const gy=yc(gv);
+    const gl=document.createElementNS('http://www.w3.org/2000/svg','line');
+    gl.setAttribute('x1',PL); gl.setAttribute('x2',W-PR);
+    gl.setAttribute('y1',gy); gl.setAttribute('y2',gy);
+    gl.setAttribute('stroke','#e2e8f0'); gl.setAttribute('stroke-width','1'); g.appendChild(gl);
+    const gt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    gt.setAttribute('x',PL-3); gt.setAttribute('y',gy+3);
+    gt.setAttribute('text-anchor','end'); gt.setAttribute('font-size','7.5');
+    gt.setAttribute('fill','#94a3b8'); gt.textContent=Math.round(gv); g.appendChild(gt);
+  }
+
+  // Net flow bars
+  netFlows.forEach((v,i)=>{
+    const y0=Math.max(PT,Math.min(H-PB,yc(0)));
+    const barH=Math.abs(yc(v)-y0);
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',PL+bw*i+2); rect.setAttribute('y',v>=0?yc(v):y0);
+    rect.setAttribute('width',bw-4); rect.setAttribute('height',barH);
+    rect.setAttribute('fill',v>=0?'rgba(16,185,129,0.5)':'rgba(239,68,68,0.5)');
+    rect.setAttribute('rx','2'); g.appendChild(rect);
+    const xt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    xt.setAttribute('x',PL+bw*i+bw/2); xt.setAttribute('y',H-3);
+    xt.setAttribute('text-anchor','middle'); xt.setAttribute('font-size','7');
+    xt.setAttribute('fill','#94a3b8'); xt.textContent=MONTHS[i].substring(0,3); g.appendChild(xt);
+  });
+
+  // Rolling avg line
+  const valid = rolling3.map((v,i)=>v!==null?{x:xc(i),y:yc(v)}:null).filter(Boolean);
+  if(valid.length>1){
+    let pathD='';
+    valid.forEach((pt,i)=>{ pathD+=(i===0?'M':'L')+` ${pt.x} ${pt.y} `; });
+    const lp=document.createElementNS('http://www.w3.org/2000/svg','path');
+    lp.setAttribute('d',pathD); lp.setAttribute('fill','none');
+    lp.setAttribute('stroke','#f59e0b'); lp.setAttribute('stroke-width','2');
+    lp.setAttribute('stroke-linejoin','round'); lp.setAttribute('stroke-linecap','round');
+    g.appendChild(lp);
+  }
+
+  // Insight
+  const avgNet = netFlows.reduce((a,b)=>a+b,0)/N;
+  const posMo  = netFlows.filter(v=>v>=0).length;
+  const trend  = rolling3[N-1] !== null && rolling3[2] !== null
+    ? (rolling3[N-1] > rolling3[2] ? 'improving' : 'declining') : 'stable';
+  document.getElementById('burnInsight').textContent =
+    `${posMo} of 12 months are cash-flow positive. Average monthly net flow is ${avgNet>=0?'a surplus of':'a deficit of'} ₹${Math.abs(avgNet).toFixed(2)}L. The 3-month rolling trend is ${trend}.`;
+}
+
+// ─────────────────────────────────────────────
+//  SENSITIVITY TABLE
+// ─────────────────────────────────────────────
+function updateSensitivity(base) {
+  const baseYE = base.cashPosition[N-1];
+
+  const drivers = [
+    { name: 'Sales Revenue',      key: 'sales',  dir: 1,
+      fn: (mult) => { const d=computeWith(1+mult,1,0); return d.cashPosition[N-1]; } },
+    { name: 'Raw Material Cost',  key: 'rm',     dir: -1,
+      fn: (mult) => { const d=computeWith(1,1+mult,0); return d.cashPosition[N-1]; } },
+    { name: 'Salary Costs',       key: 'sal',    dir: -1,
+      fn: (mult) => {
+        const ob=parseFloat(document.getElementById('openingBal').value)||0;
+        const adjSal=DATA.salaries.map(v=>v*(1+mult));
+        let ch=[...base.cashOnHand]; let pos=[];
+        const avail=[]; const out=[];
+        for(let i=0;i<N;i++){
+          const o=base.totalPaidOut[i]-DATA.salaries[i]+adjSal[i];
+          out.push(o);
+          const av=(i===0?ob:pos[i-1])+base.totalReceipts[i];
+          avail.push(av); pos.push(av-o);
+        }
+        return pos[N-1];
+      }},
+    { name: 'RM % (pct of sales)', key: 'pctRM', dir: -1,
+      fn: (mult) => {
+        const ob=parseFloat(document.getElementById('openingBal').value)||0;
+        const adjPct=DATA.pctRM*(1+mult);
+        let pos=[];
+        for(let i=0;i<N;i++){
+          const rmAdj=DATA.salesPlan[i]*adjPct;
+          const o=base.totalPaidOut[i]-base.rm[i]+rmAdj;
+          const av=(i===0?ob:(pos[i-1]||0))+base.totalReceipts[i];
+          pos.push(av-o);
+        }
+        return pos[N-1];
+      }},
+    { name: 'Loan Principal',     key: 'loan', dir: -1,
+      fn: (mult) => {
+        const ob=parseFloat(document.getElementById('openingBal').value)||0;
+        const adjLP=DATA.loanPrincipal.map(v=>v*(1+mult));
+        let pos=[];
+        for(let i=0;i<N;i++){
+          const o=base.totalPaidOut[i]-DATA.loanPrincipal[i]+adjLP[i];
+          const av=(i===0?ob:(pos[i-1]||0))+base.totalReceipts[i];
+          pos.push(av-o);
+        }
+        return pos[N-1];
+      }},
+    { name: 'Overhead Costs',     key: 'oh', dir: -1,
+      fn: (mult) => {
+        const ob=parseFloat(document.getElementById('openingBal').value)||0;
+        const ohKeys=['food','repairsMaint','advertising','carDelivery','eb','accountingLegal','rent','telephone'];
+        let pos=[];
+        for(let i=0;i<N;i++){
+          const ohBase=ohKeys.reduce((s,k)=>s+DATA[k][i],0);
+          const o=base.totalPaidOut[i]-ohBase+ohBase*(1+mult);
+          const av=(i===0?ob:(pos[i-1]||0))+base.totalReceipts[i];
+          pos.push(av-o);
+        }
+        return pos[N-1];
+      }},
+  ];
+
+  const levels = [-0.20,-0.10,0,0.10,0.20,0.30];
+
+  const tbody = document.getElementById('sensTableBody');
+  tbody.innerHTML = '';
+
+  const impacts = [];
+  drivers.forEach(drv => {
+    const vals = levels.map(l => drv.fn(l));
+    const impact10 = Math.abs(drv.fn(0.1) - drv.fn(0));
+    impacts.push({name:drv.name, impact10, dir:drv.dir});
+
+    const colorSens = (v) => {
+      const delta = v - baseYE;
+      if(Math.abs(delta)<0.5) return 'sv-neutral';
+      if(delta>=5) return 'sv-green';
+      if(delta>0)  return 'sv-green';
+      if(delta>-5) return 'sv-yellow';
+      if(delta>-15)return 'sv-orange';
+      return 'sv-red';
+    };
+
+    tbody.innerHTML += `<tr>
+      <td style="font-weight:700;white-space:nowrap">${drv.name}</td>
+      ${vals.map((v,i)=>{
+        const delta=(v-baseYE).toFixed(2);
+        const cls=colorSens(v);
+        const isBase=i===2;
+        return `<td style="padding:6px 4px"><span class="sens-val ${isBase?'sv-neutral':cls}">${isBase?'Base':(delta>=0?'+':'')+delta+'L'}</span></td>`;
+      }).join('')}
+      <td style="text-align:right"><span class="sens-val ${impact10>=5?'sv-red':impact10>=2?'sv-orange':'sv-yellow'}">₹${impact10.toFixed(1)}L</span></td>
+    </tr>`;
+  });
+
+  // Ranking
+  impacts.sort((a,b)=>b.impact10-a.impact10);
+  const rankDiv = document.getElementById('sensRanking');
+  rankDiv.innerHTML = '';
+  const maxI = impacts[0].impact10 || 1;
+  impacts.forEach((d,i)=>{
+    const pct = (d.impact10/maxI*100).toFixed(0);
+    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    rankDiv.innerHTML += `
+      <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f1f5f9">
+        <div style="width:20px;font-size:14px">${medal||('#'+(i+1))}</div>
+        <div style="font-size:11px;font-weight:700;color:#1e1b4b;width:160px">${d.name}</div>
+        <div style="flex:1;height:16px;background:#f1f5f9;border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${i===0?'#ef4444':i===1?'#f59e0b':'#6366f1'};border-radius:4px;transition:width .5s"></div>
+        </div>
+        <div style="font-size:11px;font-weight:800;color:#1e293b;width:70px;text-align:right">₹${d.impact10.toFixed(1)}L/10%</div>
+      </div>`;
+  });
+}
+
+// ─────────────────────────────────────────────
+//  SHARED CHART HELPER
+// ─────────────────────────────────────────────
+function drawTwoLineChart(gid, vals1, vals2, col1, col2, W, H, PL, PR, PT, PB) {
+  const g = document.getElementById(gid);
+  g.innerHTML = '';
+  const cW=W-PL-PR, cH=H-PT-PB;
+  const allV=[...vals1,...vals2];
+  const minV=Math.min(...allV); const maxV=Math.max(...allV);
+  const range=maxV-minV||1;
+  const bw=cW/N;
+  const xc=i=>PL+bw*i+bw/2;
+  const yc=v=>PT+cH-((v-minV)/range)*cH;
+
+  if(minV<0){
+    const y0=yc(0);
+    const zl=document.createElementNS('http://www.w3.org/2000/svg','line');
+    zl.setAttribute('x1',PL); zl.setAttribute('x2',W-PR);
+    zl.setAttribute('y1',y0); zl.setAttribute('y2',y0);
+    zl.setAttribute('stroke','#94a3b8'); zl.setAttribute('stroke-dasharray','4,3');
+    zl.setAttribute('stroke-width','1'); g.appendChild(zl);
+  }
+  for(let gi=0;gi<=3;gi++){
+    const gv=minV+(range*gi/3); const gy=yc(gv);
+    const gl=document.createElementNS('http://www.w3.org/2000/svg','line');
+    gl.setAttribute('x1',PL); gl.setAttribute('x2',W-PR);
+    gl.setAttribute('y1',gy); gl.setAttribute('y2',gy);
+    gl.setAttribute('stroke','#e2e8f0'); gl.setAttribute('stroke-width','1'); g.appendChild(gl);
+    const gt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    gt.setAttribute('x',PL-3); gt.setAttribute('y',gy+3);
+    gt.setAttribute('text-anchor','end'); gt.setAttribute('font-size','7.5');
+    gt.setAttribute('fill','#94a3b8'); gt.textContent=Math.round(gv); g.appendChild(gt);
+  }
+
+  [[vals1,col1,2],[vals2,col2,2]].forEach(([vals,col,sw])=>{
+    let d='';
+    vals.forEach((v,i)=>{ d+=(i===0?'M':'L')+` ${xc(i)} ${yc(v)} `; });
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',d); path.setAttribute('fill','none');
+    path.setAttribute('stroke',col); path.setAttribute('stroke-width',sw);
+    path.setAttribute('stroke-linejoin','round'); path.setAttribute('stroke-linecap','round');
+    g.appendChild(path);
+  });
+
+  MONTHS.forEach((m,i)=>{
+    const xt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    xt.setAttribute('x',xc(i)); xt.setAttribute('y',H-3);
+    xt.setAttribute('text-anchor','middle'); xt.setAttribute('font-size','7');
+    xt.setAttribute('fill','#94a3b8'); xt.textContent=m.substring(0,3); g.appendChild(xt);
+  });
+}
+
+// ─────────────────────────────────────────────
+//  EXPORT / COPY
+// ─────────────────────────────────────────────
+function exportCSV() {
+  const d = compute();
+  let csv = 'Item,' + MONTHS.join(',') + '\n';
+  csv += 'Sales Plan,' + DATA.salesPlan.join(',') + '\n';
+  csv += 'Total Receipts,' + d.totalReceipts.join(',') + '\n';
+  csv += 'Cash Available,' + d.totalAvailable.join(',') + '\n';
+  csv += 'Total Paid Out,' + d.totalPaidOut.join(',') + '\n';
+  csv += 'Cash Position,' + d.cashPosition.join(',') + '\n';
+  csv += 'RM Cost,' + d.rm.join(',') + '\n';
+  csv += 'Salaries,' + DATA.salaries.join(',') + '\n';
+  csv += 'Loan Principal,' + DATA.loanPrincipal.join(',') + '\n';
+  csv += 'Total Interest,' + DATA.interestTerm.map((v,i)=>v+DATA.interestWC[i]+DATA.otherBank[i]).join(',') + '\n';
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download='cashflow_fy2627.csv'; a.click();
+}
+
+function copySnapshot() {
+  const d = compute();
+  const totalRec = d.totalReceipts.reduce((a,b)=>a+b,0);
+  const totalOut = d.totalPaidOut.reduce((a,b)=>a+b,0);
+  const yearEnd  = d.cashPosition[N-1];
+  const negMo    = d.cashPosition.filter(v=>v<0).length;
+
+  const best  = computeWith(1.20,0.95,0);
+  const worst = computeWith(0.75,1.10,0);
+
+  let txt = `Cash Flow Summary — FY 2026-27\n`;
+  txt += `=====================================\n`;
+  txt += `Total Receipts    : ₹${totalRec.toFixed(1)}L\n`;
+  txt += `Total Cash Out    : ₹${totalOut.toFixed(1)}L\n`;
+  txt += `Net Annual Flow   : ₹${(totalRec-totalOut).toFixed(1)}L\n`;
+  txt += `Year-End Position : ₹${yearEnd.toFixed(2)}L\n`;
+  txt += `Negative Months   : ${negMo} / 12\n\n`;
+  txt += `SCENARIOS\n---------\n`;
+  txt += `Best Case (Sales+20%, RM-5%): Year-End ₹${best.cashPosition[N-1].toFixed(2)}L\n`;
+  txt += `Base Case                   : Year-End ₹${yearEnd.toFixed(2)}L\n`;
+  txt += `Worst Case (Sales-25%, RM+10%): Year-End ₹${worst.cashPosition[N-1].toFixed(2)}L\n\n`;
+  txt += `MONTH-BY-MONTH CASH POSITION\n-----------------------------\n`;
+  MONTHS.forEach((m,i)=>{ txt += `${m.padEnd(8)}: ₹${d.cashPosition[i].toFixed(2)}L\n`; });
+
+  navigator.clipboard.writeText(txt).then(()=>{
+    const msg=document.getElementById('exportMsg');
+    msg.style.display='inline'; setTimeout(()=>msg.style.display='none',2500);
+  }).catch(()=>{ alert(txt); });
+}
+
+// ─────────────────────────────────────────────
+//  EVENT HANDLERS
+// ─────────────────────────────────────────────
+function onCellInput(el) {
+  const key = el.dataset.key;
+  const idx = parseInt(el.dataset.idx);
+  DATA[key][idx] = parseFloat(el.value) || 0;
+  recalculate();
+}
+
+function onPctInput(el) {
+  const key = el.dataset.pctkey;
+  DATA[key] = parseFloat(el.value) || 0;
+  recalculate();
+}
+
+function onStartMonthChange() {
+  START_IDX = parseInt(document.getElementById('startMonthSel').value) || 0;
+  MONTHS = ALL_MONTHS.slice(START_IDX, START_IDX + N);
+  // Update table column headers
+  for (let i = 0; i < N; i++) {
+    const th = document.getElementById('th' + i);
+    if (th) th.textContent = MONTHS[i];
+  }
+  // Update opening balance label
+  const lbl = document.getElementById('obLabel');
+  if (lbl) lbl.textContent = 'Opening Balance (Cash on Hand – ' + MONTHS[0] + '):';
+  // Rebuild table (month labels in rows also update) + analytics
+  recalculate();
+}
+
+function recalculate() {
+  const d = compute();
+  // Always keep label in sync even if called without month change
+  const lbl = document.getElementById('obLabel');
+  if (lbl) lbl.textContent = 'Opening Balance (Cash on Hand – ' + MONTHS[0] + '):';
+  updateStaticCells(d);
+  updateAnalytics(d);
+  scheduleSave(); // ← auto-save every time anything changes
+}
+
+// ─────────────────────────────────────────────
+//  PIN LOCK — 6-digit PIN: 798900
+// ─────────────────────────────────────────────
+const CASHFLOW_PIN = '798900';
+let pinAttempts = 0;
+
+function verifyPin() {
+  const entered = document.getElementById('pin-input').value.trim();
+  const errorEl = document.getElementById('pin-error');
+  const card    = document.getElementById('pin-card');
+
+  if (entered === CASHFLOW_PIN) {
+    sessionStorage.setItem('cashflow_unlocked', 'true');
+    pinAttempts = 0;
+    card.style.animation = 'none';
+    document.getElementById('pin-lock-overlay').style.display = 'none';
+    document.getElementById('main-content').style.display      = 'block';
+    initApp(); // load DB then build table
+  } else {
+    pinAttempts++;
+    errorEl.style.display = 'block';
+    const attEl = document.getElementById('pin-attempts');
+    attEl.textContent = pinAttempts >= 3
+      ? `${pinAttempts} failed attempt${pinAttempts > 1 ? 's' : ''} — double-check your PIN`
+      : '';
+    card.style.animation = '';
+    void card.offsetWidth; // reflow to restart animation
+    card.style.animation = 'shake 0.4s ease';
+    document.getElementById('pin-input').value = '';
+    document.getElementById('pin-input').focus();
+  }
+}
+
+// ─────────────────────────────────────────────
+//  DATABASE CONNECTIVITY
+// ─────────────────────────────────────────────
+const API_BASE = '';
+let saveTimeout = null;
+
+function setSaveStatus(status) {
+  const el = document.getElementById('save-status');
+  if (!el) return;
+  const map = {
+    loading: { text: '⏳ Loading…',     cls: '' },
+    loaded:  { text: '✅ Data loaded',  cls: 'saved' },
+    pending: { text: '✏️ Unsaved…',     cls: 'pending' },
+    saving:  { text: '💾 Saving…',      cls: 'saving' },
+    saved:   { text: '✅ Auto-saved',   cls: 'saved' },
+    error:   { text: '❌ Save failed',  cls: 'error' },
+    offline: { text: '📡 No DB — Local only', cls: 'error' }
+  };
+  const s = map[status] || map.saved;
+  el.textContent = s.text;
+  el.className   = s.cls;
+}
+
+async function loadFromDB() {
+  setSaveStatus('loading');
+  try {
+    const res  = await fetch(`${API_BASE}/api/cashflow/load`);
+    const saved = await res.json();
+    if (saved && saved.data) {
+      // Restore every key that exists in DATA
+      Object.keys(saved.data).forEach(key => {
+        if (Object.prototype.hasOwnProperty.call(DATA, key)) {
+          DATA[key] = saved.data[key];
+        }
+      });
+      // Restore opening balance
+      const obEl = document.getElementById('openingBal');
+      if (obEl && saved.openingBal !== undefined && saved.openingBal !== null) {
+        obEl.value = saved.openingBal;
+      }
+      // Restore start month
+      if (saved.startMonthIdx !== undefined && saved.startMonthIdx !== null) {
+        START_IDX = parseInt(saved.startMonthIdx) || 0;
+        const sel = document.getElementById('startMonthSel');
+        if (sel) sel.value = START_IDX;
+        MONTHS = ALL_MONTHS.slice(START_IDX, START_IDX + N);
+        for (let i = 0; i < N; i++) {
+          const th = document.getElementById('th' + i);
+          if (th) th.textContent = MONTHS[i];
+        }
+      }
+      setSaveStatus('loaded');
+    } else {
+      setSaveStatus('loaded'); // new document, no data yet
+    }
+  } catch (e) {
+    console.warn('DB load failed — running with defaults:', e);
+    setSaveStatus('offline');
+  }
+  // Build the table regardless of load success/failure
+  const d = compute();
+  buildTable(d);
+  updateAnalytics(d);
+  updateWC();
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimeout);
+  setSaveStatus('pending');
+  saveTimeout = setTimeout(saveToDB, 900); // 900ms debounce
+}
+
+async function saveToDB() {
+  setSaveStatus('saving');
+  try {
+    await fetch(`${API_BASE}/api/cashflow/save`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        data:          DATA,
+        openingBal:    parseFloat(document.getElementById('openingBal').value) || 5,
+        startMonthIdx: START_IDX
+      })
+    });
+    setSaveStatus('saved');
+  } catch (e) {
+    console.warn('Auto-save failed:', e);
+    setSaveStatus('error');
+  }
+}
+
+// ─────────────────────────────────────────────
+//  INIT — called after PIN unlock
+// ─────────────────────────────────────────────
+function initApp() {
+  loadFromDB(); // loads data → rebuilds table
+}
+
+// ─────────────────────────────────────────────
+//  STARTUP CHECK — if already unlocked this session
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  if (sessionStorage.getItem('cashflow_unlocked') === 'true') {
+    document.getElementById('pin-lock-overlay').style.display = 'none';
+    document.getElementById('main-content').style.display      = 'block';
+    initApp();
+  } else {
+    // Focus the PIN input for quick entry
+    setTimeout(() => {
+      const inp = document.getElementById('pin-input');
+      if (inp) inp.focus();
+    }, 300);
+  }
+});
+</script>
+
+</div><!-- /#main-content -->
+</body>
+</html>

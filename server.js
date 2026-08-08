@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const cors = require('cors');
-const { Invoice, Payable, BankTransaction, SundryLedger, DeletedRecord } = require('./models/Finance');
+const { Invoice, Payable, BankTransaction, SundryLedger, DeletedRecord, CashFlow } = require('./models/Finance');
 
 const app = express();
 app.use(cors());
@@ -617,6 +617,41 @@ app.put('/api/finance/update-record/:type/:id', async (req, res) => {
         await Model.findByIdAndUpdate(id, { [field]: parsedValue });
         res.json({ message: "Cell Updated Successfully!" });
     } catch (error) { res.status(500).json({ error: "Failed to update record." }); }
+});
+
+// ─── CASH FLOW PLANNER API ────────────────────────────────────────────────────
+
+// Load saved cash flow data
+app.get('/api/cashflow/load', async (req, res) => {
+    try {
+        const cf = await CashFlow.findOne({ name: 'default' });
+        res.json(cf || { data: null, openingBal: 5, startMonthIdx: 0 });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to load cash flow data' });
+    }
+});
+
+// Save (upsert) cash flow data — called automatically on every edit
+app.post('/api/cashflow/save', async (req, res) => {
+    try {
+        await CashFlow.findOneAndUpdate(
+            { name: 'default' },
+            {
+                $set: {
+                    data:          req.body.data,
+                    openingBal:    req.body.openingBal    ?? 5,
+                    startMonthIdx: req.body.startMonthIdx ?? 0,
+                    updatedAt:     new Date()
+                }
+            },
+            { upsert: true, new: true }
+        );
+        res.json({ message: 'Cash flow data saved!' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to save cash flow data' });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
