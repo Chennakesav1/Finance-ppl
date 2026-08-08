@@ -1084,17 +1084,43 @@
         </div>
       </div>
     </div>
-    <div class="chart-card">
-      <h3>🎛️ What-If Cash Position vs Base
-        <span class="badge">5 lines · Live</span>
+    <div class="chart-card" style="padding:16px 16px 14px;">
+      <!-- Header row -->
+      <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        🎛️ What-If Cash Position vs Base
+        <span class="badge">7 lines · Live</span>
+        <span style="margin-left:auto;font-size:10px;color:#94a3b8;font-weight:500;">💡 Hover any month for detail</span>
       </h3>
-      <svg id="wiChart" width="100%" viewBox="0 0 680 240" xmlns="http://www.w3.org/2000/svg"><g id="wiChartG"></g></svg>
-      <div class="legend" style="margin-top:8px">
-        <div class="legend-item"><div class="legend-dot" style="background:#6366f1;border-radius:50%"></div>Base Cash Position</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;border-radius:50%"></div>What-If Cash Position</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#10b981;border-radius:2px"></div>Total Receipts (Base)</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;border-radius:2px"></div>Total Receipts (What-If)</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#ef4444;border-radius:2px"></div>Total Cash Out</div>
+
+      <!-- Chart + right-side legend side by side -->
+      <div style="display:flex;align-items:flex-start;gap:0;">
+        <!-- SVG — takes all remaining width -->
+        <div style="flex:1;min-width:0;overflow:visible;">
+          <svg id="wiChart" width="100%" viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;"><g id="wiChartG"></g></svg>
+        </div>
+        <!-- Right legend panel — fixed width, vertically centred -->
+        <div id="wiLegendPanel" style="
+          flex-shrink:0;width:148px;display:flex;flex-direction:column;
+          gap:5px;padding:10px 0 10px 12px;align-self:center;
+        ">
+          <!-- populated by drawWhatIfChart() -->
+        </div>
+      </div>
+
+      <!-- Bottom legend strip: special items only -->
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px;padding-top:8px;border-top:1px solid #f1f5f9;">
+        <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#475569;">
+          <span style="display:inline-block;width:13px;height:13px;background:rgba(16,185,129,0.35);border-radius:2px;flex-shrink:0;"></span>
+          Delta ↑ — WI better
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#475569;">
+          <span style="display:inline-block;width:13px;height:13px;background:rgba(239,68,68,0.25);border-radius:2px;flex-shrink:0;"></span>
+          Delta ↓ — WI worse
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#475569;">
+          <span style="color:#f59e0b;font-weight:900;font-size:14px;line-height:1;">✕</span>
+          Crossover point
+        </div>
       </div>
     </div>
   </div>
@@ -2746,128 +2772,260 @@ function updateSensitivity(base) {
 }
 
 // ─────────────────────────────────────────────
-//  WHAT-IF 5-LINE CHART
-//  baseCash, adjCash, baseReceipts, adjReceipts, basePaidOut, adjPaidOut
+//  WHAT-IF ENHANCED CHART  (clean rewrite)
 // ─────────────────────────────────────────────
 function drawWhatIfChart(gid, baseCash, adjCash, baseRec, adjRec, basePaidOut, adjPaidOut) {
-  const g = document.getElementById(gid);
+  const svgEl = document.getElementById('wiChart');
+  const g     = document.getElementById(gid);
   g.innerHTML = '';
-  const W=680, H=240, PL=44, PR=14, PT=16, PB=40;
-  const cW=W-PL-PR, cH=H-PT-PB;
 
-  // Combine all series to get global min/max
-  const allV = [...baseCash, ...adjCash, ...baseRec, ...adjRec, ...basePaidOut, ...adjPaidOut];
-  const minV = Math.min(...allV);
-  const maxV = Math.max(...allV);
-  const range = maxV - minV || 1;
-  const bw = cW / N;
-  const xc = i => PL + bw * i + bw / 2;
-  const yc = v => PT + cH - ((v - minV) / range) * cH;
+  // ── Remove any stale tooltip ──
+  const oldTip = document.getElementById('wiTooltip');
+  if (oldTip) oldTip.remove();
 
-  // ── Grid lines ──
-  for (let gi = 0; gi <= 5; gi++) {
-    const gv = minV + (range * gi / 5);
-    const gy = yc(gv);
-    const gl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    gl.setAttribute('x1', PL); gl.setAttribute('x2', W - PR);
-    gl.setAttribute('y1', gy); gl.setAttribute('y2', gy);
-    gl.setAttribute('stroke', '#e2e8f0'); gl.setAttribute('stroke-width', '1');
-    g.appendChild(gl);
-    const gt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    gt.setAttribute('x', PL - 4); gt.setAttribute('y', gy + 3);
-    gt.setAttribute('text-anchor', 'end'); gt.setAttribute('font-size', '8');
-    gt.setAttribute('fill', '#94a3b8'); gt.textContent = Math.round(gv);
-    g.appendChild(gt);
-  }
+  // ── Canvas dimensions — wider, no right-margin for labels (legend is external) ──
+  const W=760, H=300, PL=50, PR=18, PT=22, PB=46;
+  const cW = W - PL - PR, cH = H - PT - PB;
+  svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
 
-  // ── Zero line (if negative values exist) ──
-  if (minV < 0) {
-    const y0 = yc(0);
-    const zl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    zl.setAttribute('x1', PL); zl.setAttribute('x2', W - PR);
-    zl.setAttribute('y1', y0); zl.setAttribute('y2', y0);
-    zl.setAttribute('stroke', '#94a3b8'); zl.setAttribute('stroke-dasharray', '5,3');
-    zl.setAttribute('stroke-width', '1.5'); g.appendChild(zl);
-    const zt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    zt.setAttribute('x', PL - 4); zt.setAttribute('y', y0 + 3);
-    zt.setAttribute('text-anchor', 'end'); zt.setAttribute('font-size', '8');
-    zt.setAttribute('fill', '#94a3b8'); zt.textContent = '0'; g.appendChild(zt);
-  }
+  // ── Derived series ──
+  const baseNet = baseRec.map((v,i) => v - basePaidOut[i]);
+  const adjNet  = adjRec.map((v,i)  => v - adjPaidOut[i]);
 
-  // ── Area fills ──
-  const makeArea = (vals, color, opacity) => {
-    const y0b = Math.max(PT, Math.min(H - PB, yc(0)));
-    let d = `M ${xc(0)} ${y0b}`;
-    vals.forEach((v, i) => { d += ` L ${xc(i)} ${yc(v)}`; });
-    d += ` L ${xc(N - 1)} ${y0b} Z`;
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', d);
-    path.setAttribute('fill', color);
-    path.setAttribute('opacity', opacity);
-    g.appendChild(path);
+  // ── Scale ──
+  const allV  = [...baseCash,...adjCash,...baseRec,...adjRec,...basePaidOut,...adjPaidOut,...baseNet,...adjNet];
+  const rawMin = Math.min(...allV), rawMax = Math.max(...allV);
+  const pad    = (rawMax - rawMin) * 0.10;
+  const lo     = rawMin - pad, hi = rawMax + pad;
+  const range  = hi - lo || 1;
+
+  const bw  = cW / N;
+  const xc  = i => PL + bw * i + bw / 2;
+  const yc  = v => PT + cH - ((v - lo) / range) * cH;
+
+  // ── Helper: make SVG element ──
+  const svgEl2 = (tag, attrs) => {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k, v));
+    return el;
   };
-  makeArea(baseRec,    'rgba(16,185,129,0.07)',  1);
-  makeArea(adjRec,     'rgba(59,130,246,0.07)',  1);
-  makeArea(basePaidOut,'rgba(239,68,68,0.07)',   1);
 
-  // ── Line drawer ──
+  // ── 1. Background grid ──
+  const gridSteps = 6;
+  for (let gi = 0; gi <= gridSteps; gi++) {
+    const gv = lo + (range * gi / gridSteps);
+    const gy = yc(gv);
+    g.appendChild(svgEl2('line', { x1:PL, x2:W-PR, y1:gy, y2:gy,
+      stroke: gi === 0 || gi === gridSteps ? '#cbd5e1' : '#e2e8f0',
+      'stroke-width':'1', 'stroke-dasharray': gi === 0 || gi === gridSteps ? '' : '4,3' }));
+    const lbl = svgEl2('text', { x:PL-6, y:gy+3.5,
+      'text-anchor':'end', 'font-size':'9', fill:'#94a3b8', 'font-weight':'500' });
+    lbl.textContent = Math.round(gv);
+    g.appendChild(lbl);
+  }
+
+  // ── 2. Zero line ──
+  if (lo < 0 && hi > 0) {
+    const y0 = yc(0);
+    g.appendChild(svgEl2('line', { x1:PL, x2:W-PR, y1:y0, y2:y0,
+      stroke:'#64748b', 'stroke-dasharray':'6,4', 'stroke-width':'1.5' }));
+    const zt = svgEl2('text', { x:PL-6, y:y0+3.5,
+      'text-anchor':'end', 'font-size':'9', fill:'#475569', 'font-weight':'700' });
+    zt.textContent = '0'; g.appendChild(zt);
+  }
+
+  // ── 3. Subtle area fills ──
+  const makeArea = (vals, color) => {
+    const y0b = Math.max(PT, Math.min(H-PB, yc(0)));
+    let d = `M ${xc(0)} ${y0b}`;
+    vals.forEach((v,i) => { d += ` L ${xc(i)} ${yc(v)}`; });
+    d += ` L ${xc(N-1)} ${y0b} Z`;
+    g.appendChild(svgEl2('path', { d, fill:color }));
+  };
+  makeArea(baseRec,    'rgba(16,185,129,0.06)');
+  makeArea(adjRec,     'rgba(59,130,246,0.06)');
+  makeArea(basePaidOut,'rgba(239,68,68,0.05)');
+
+  // ── 4. Delta shading between Base Cash and What-If Cash ──
+  for (let i = 0; i < N-1; i++) {
+    const x0=xc(i), x1=xc(i+1);
+    const bY0=yc(baseCash[i]), bY1=yc(baseCash[i+1]);
+    const aY0=yc(adjCash[i]),  aY1=yc(adjCash[i+1]);
+    const fill = adjCash[i] >= baseCash[i] ? 'rgba(16,185,129,0.16)' : 'rgba(239,68,68,0.16)';
+    g.appendChild(svgEl2('polygon', {
+      points:`${x0},${bY0} ${x1},${bY1} ${x1},${aY1} ${x0},${aY0}`, fill }));
+  }
+
+  // ── 5. Lines ──
   const makeLine = (vals, color, sw, dash) => {
     let d = '';
-    vals.forEach((v, i) => { d += (i === 0 ? 'M' : 'L') + ` ${xc(i)} ${yc(v)} `; });
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', d); path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', color); path.setAttribute('stroke-width', sw || 2);
-    path.setAttribute('stroke-linejoin', 'round'); path.setAttribute('stroke-linecap', 'round');
+    vals.forEach((v,i) => { d += (i===0?'M':'L') + ` ${xc(i)} ${yc(v)} `; });
+    const path = svgEl2('path', { d, fill:'none', stroke:color,
+      'stroke-width': sw||2, 'stroke-linejoin':'round', 'stroke-linecap':'round' });
     if (dash) path.setAttribute('stroke-dasharray', dash);
     g.appendChild(path);
-    return path;
   };
+  makeLine(basePaidOut, '#ef4444', 1.5, '6,4');   // Cash Out — red dashed
+  makeLine(baseRec,     '#10b981', 1.5);            // Rec Base — green solid
+  makeLine(adjRec,      '#3b82f6', 1.5, '5,3');    // Rec WI  — blue dashed
+  makeLine(baseNet,     '#8b5cf6', 1.5, '3,3');    // Net Base — purple dashed
+  makeLine(adjNet,      '#06b6d4', 1.5, '3,3');    // Net WI  — cyan dashed
+  makeLine(baseCash,    '#6366f1', 2.8);            // Cash Base — indigo bold
+  makeLine(adjCash,     '#f59e0b', 2.8);            // Cash WI   — amber bold
 
-  // Draw order: background lines first, cash positions on top
-  makeLine(basePaidOut, '#ef4444', 1.5, '5,3');   // Total Cash Out (dashed red)
-  makeLine(baseRec,     '#10b981', 1.5);            // Base Total Receipts (solid green)
-  makeLine(adjRec,      '#3b82f6', 1.5, '4,2');    // What-If Receipts (dashed blue)
-  makeLine(baseCash,    '#6366f1', 2.5);            // Base Cash Position (solid indigo)
-  makeLine(adjCash,     '#f59e0b', 2.5);            // What-If Cash Position (solid amber)
+  // ── 6. Crossover markers ──
+  for (let i = 1; i < N; i++) {
+    if ((adjCash[i-1]-baseCash[i-1]) * (adjCash[i]-baseCash[i]) < 0) {
+      const cx = xc(i), cy = (yc(adjCash[i]) + yc(baseCash[i])) / 2, r=5;
+      g.appendChild(svgEl2('polygon', {
+        points:`${cx},${cy-r} ${cx+r},${cy} ${cx},${cy+r} ${cx-r},${cy}`,
+        fill:'#f59e0b', stroke:'#fff', 'stroke-width':'1.5' }));
+      const xt = svgEl2('text', { x:cx, y:cy-r-4,
+        'text-anchor':'middle', 'font-size':'8', 'font-weight':'800', fill:'#92400e' });
+      xt.textContent = '✕'; g.appendChild(xt);
+    }
+  }
 
-  // ── Dots + value labels for the two Cash Position lines ──
-  const drawDots = (vals, dotColor, labelYOffset) => {
-    vals.forEach((v, i) => {
-      const cx = xc(i), cy = yc(v);
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', cx); circle.setAttribute('cy', cy);
-      circle.setAttribute('r', '3.5');
-      circle.setAttribute('fill', v < 0 ? '#ef4444' : dotColor);
-      circle.setAttribute('stroke', '#fff'); circle.setAttribute('stroke-width', '1.5');
-      g.appendChild(circle);
+  // ── 7. Dots — only on the two main CASH lines ──
+  [[baseCash,'#6366f1',3],[adjCash,'#f59e0b',3.5]].forEach(([vals,col,r]) => {
+    vals.forEach((v,i) => {
+      g.appendChild(svgEl2('circle', {
+        cx:xc(i), cy:yc(v), r,
+        fill: v < 0 ? '#ef4444' : col,
+        stroke:'#fff', 'stroke-width':'1.5' }));
     });
-  };
-  drawDots(baseCash, '#6366f1', -7);
-  drawDots(adjCash,  '#f59e0b', 7);
+  });
 
-  // ── Value labels for What-If cash position (top line) ──
-  adjCash.forEach((v, i) => {
+  // ── 8. Value labels — ONLY every 3rd point for each cash line to avoid overlap ──
+  //    Base Cash: label above dot; What-If Cash: label below dot
+  //    Show ALL labels but use smart vertical offset based on proximity
+  baseCash.forEach((v, i) => {
     const cx = xc(i), cy = yc(v);
-    const neg = v < 0;
-    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    lbl.setAttribute('x', cx);
-    lbl.setAttribute('y', neg ? cy + 12 : cy - 7);
-    lbl.setAttribute('text-anchor', 'middle');
-    lbl.setAttribute('font-size', '7.5');
-    lbl.setAttribute('font-weight', '700');
-    lbl.setAttribute('fill', neg ? '#dc2626' : '#d97706');
-    lbl.textContent = (neg ? '–' : '') + Math.abs(v).toFixed(1);
+    // Check if adjCash label would be too close — shift base label further up
+    const gap = Math.abs(yc(adjCash[i]) - cy);
+    const dy  = gap < 20 ? -16 : -7;
+    const lbl = svgEl2('text', { x:cx, y:cy+dy,
+      'text-anchor':'middle', 'font-size':'8', fill: v<0?'#dc2626':'#4f46e5', 'font-weight':'600' });
+    lbl.textContent = (v<0?'–':'')+Math.abs(v).toFixed(1);
     g.appendChild(lbl);
   });
 
-  // ── X-axis month labels ──
+  adjCash.forEach((v, i) => {
+    const cx = xc(i), cy = yc(v);
+    const gap = Math.abs(yc(baseCash[i]) - cy);
+    const dy  = gap < 20 ? 18 : 13;
+    const lbl = svgEl2('text', { x:cx, y:cy+dy,
+      'text-anchor':'middle', 'font-size':'8', fill: v<0?'#dc2626':'#d97706', 'font-weight':'700' });
+    lbl.textContent = (v<0?'–':'')+Math.abs(v).toFixed(1);
+    g.appendChild(lbl);
+  });
+
+  // ── 9. X-axis month labels ──
   MONTHS.forEach((m, i) => {
-    const xt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    xt.setAttribute('x', xc(i)); xt.setAttribute('y', H - 5);
-    xt.setAttribute('text-anchor', 'middle'); xt.setAttribute('font-size', '8');
-    xt.setAttribute('fill', '#64748b'); xt.textContent = m.substring(0, 3);
+    const xt = svgEl2('text', { x:xc(i), y:H-6,
+      'text-anchor':'middle', 'font-size':'9.5', fill:'#64748b', 'font-weight':'600' });
+    xt.textContent = m.substring(0,6); // e.g. "Aug-26"
     g.appendChild(xt);
   });
+
+  // ── 10. External legend panel (HTML, right of chart) ──
+  const legendPanel = document.getElementById('wiLegendPanel');
+  if (legendPanel) {
+    const series = [
+      { color:'#6366f1', solid:true,  bold:true,  label:'Cash Pos (Base)', val: baseCash[N-1] },
+      { color:'#f59e0b', solid:true,  bold:true,  label:'Cash Pos (WI)',   val: adjCash[N-1] },
+      { color:'#10b981', solid:true,  bold:false, label:'Rec (Base)',       val: baseRec[N-1] },
+      { color:'#3b82f6', solid:false, bold:false, label:'Rec (WI)',         val: adjRec[N-1] },
+      { color:'#ef4444', solid:false, bold:false, label:'Cash Out',         val: basePaidOut[N-1] },
+      { color:'#8b5cf6', solid:false, bold:false, label:'Net (Base)',        val: baseNet[N-1] },
+      { color:'#06b6d4', solid:false, bold:false, label:'Net (WI)',          val: adjNet[N-1] },
+    ];
+    legendPanel.innerHTML = series.map(s => `
+      <div style="display:flex;align-items:center;gap:7px;padding:5px 8px;
+                  border-radius:6px;background:${s.bold?'#f8fafc':'transparent'};
+                  ${s.bold?'border:1px solid #e2e8f0;':''}" >
+        <span style="
+          display:inline-block;flex-shrink:0;
+          width:${s.bold?'14':'28'}px;height:${s.bold?'14':'3'}px;
+          border-radius:${s.bold?'50%':'2px'};
+          background:${s.color};
+          ${!s.solid && !s.bold ? `background:repeating-linear-gradient(90deg,${s.color} 0,${s.color} 5px,transparent 5px,transparent 9px)` : ''}
+        "></span>
+        <div style="min-width:0">
+          <div style="font-size:10px;font-weight:${s.bold?'800':'600'};color:${s.bold?'#1e293b':'#475569'};
+                      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.label}</div>
+          <div style="font-size:10.5px;font-weight:700;color:${s.val<0?'#dc2626':s.color};">
+            ${s.val<0?'–₹':'₹'}${Math.abs(s.val).toFixed(1)}L
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── 11. Hover tooltip ──
+  const tooltip = document.createElement('div');
+  tooltip.id = 'wiTooltip';
+  tooltip.style.cssText = `
+    position:absolute; pointer-events:none; display:none;
+    background:#1e1b4b; color:#e0e7ff; border-radius:9px;
+    padding:10px 14px; font-size:11px; line-height:1.75;
+    box-shadow:0 6px 24px rgba(0,0,0,.28); min-width:180px;
+    z-index:200; border:1px solid #4f46e5;
+  `;
+  const chartCard = svgEl.closest('.chart-card') || svgEl.parentElement;
+  chartCard.style.position = 'relative';
+  chartCard.appendChild(tooltip);
+
+  for (let i = 0; i < N; i++) {
+    const rect = svgEl2('rect', {
+      x: PL + bw * i, y: PT, width: bw, height: cH,
+      fill:'transparent', cursor:'crosshair' });
+    rect.style.cursor = 'crosshair';
+
+    (function(idx) {
+      rect.addEventListener('mouseenter', () => {
+        const netB  = baseNet[idx], netA = adjNet[idx];
+        const delta = adjCash[idx] - baseCash[idx];
+        const arrow = delta >= 0 ? '▲' : '▼';
+        const arrowColor = delta >= 0 ? '#6ee7b7' : '#fca5a5';
+        const row = (label, val, col) =>
+          `<div style="display:flex;justify-content:space-between;gap:14px">
+             <span style="color:#a5b4fc">${label}</span>
+             <span style="color:${col};font-weight:700">${val}</span>
+           </div>`;
+        tooltip.innerHTML = `
+          <div style="font-weight:800;font-size:12px;color:#a5b4fc;margin-bottom:6px;
+                      border-bottom:1px solid #3730a3;padding-bottom:4px">${MONTHS[idx]}</div>
+          ${row('Receipts (Base)', '₹'+baseRec[idx].toFixed(2)+'L', '#6ee7b7')}
+          ${row('Receipts (WI)',   '₹'+adjRec[idx].toFixed(2)+'L',  '#93c5fd')}
+          ${row('Cash Out',        '₹'+basePaidOut[idx].toFixed(2)+'L','#fca5a5')}
+          ${row('Net Flow (Base)', (netB<0?'–₹':'₹')+Math.abs(netB).toFixed(2)+'L', netB>=0?'#6ee7b7':'#fca5a5')}
+          ${row('Net Flow (WI)',   (netA<0?'–₹':'₹')+Math.abs(netA).toFixed(2)+'L', netA>=0?'#6ee7b7':'#fca5a5')}
+          <div style="border-top:1px solid #3730a3;margin-top:5px;padding-top:5px">
+          ${row('Cash Pos (Base)', (baseCash[idx]<0?'–₹':'₹')+Math.abs(baseCash[idx]).toFixed(2)+'L',
+                baseCash[idx]>=0?'#c4b5fd':'#fca5a5')}
+          ${row('Cash Pos (WI)',   (adjCash[idx]<0?'–₹':'₹')+Math.abs(adjCash[idx]).toFixed(2)+'L',
+                adjCash[idx]>=0?'#fcd34d':'#fca5a5')}
+          </div>
+          <div style="margin-top:5px;border-top:1px solid #3730a3;padding-top:5px;
+                      font-weight:800;display:flex;justify-content:space-between;">
+            <span>Δ vs Base</span>
+            <span style="color:${arrowColor}">${arrow} ₹${Math.abs(delta).toFixed(2)}L</span>
+          </div>`;
+        tooltip.style.display = 'block';
+      });
+      rect.addEventListener('mousemove', e => {
+        const card = chartCard.getBoundingClientRect();
+        let tx = e.clientX - card.left + 14;
+        if (tx + 195 > card.width) tx = e.clientX - card.left - 205;
+        tooltip.style.left = tx+'px';
+        tooltip.style.top  = (e.clientY - card.top - 22)+'px';
+      });
+      rect.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+    })(i);
+
+    g.appendChild(rect);
+  }
 }
 
 // ─────────────────────────────────────────────
