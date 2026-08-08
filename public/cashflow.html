@@ -1085,11 +1085,16 @@
       </div>
     </div>
     <div class="chart-card">
-      <h3>🎛️ What-If Cash Position vs Base</h3>
-      <svg id="wiChart" width="100%" viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg"><g id="wiChartG"></g></svg>
+      <h3>🎛️ What-If Cash Position vs Base
+        <span class="badge">5 lines · Live</span>
+      </h3>
+      <svg id="wiChart" width="100%" viewBox="0 0 680 240" xmlns="http://www.w3.org/2000/svg"><g id="wiChartG"></g></svg>
       <div class="legend" style="margin-top:8px">
-        <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div>Base</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>What-If Adjusted</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#6366f1;border-radius:50%"></div>Base Cash Position</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;border-radius:50%"></div>What-If Cash Position</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981;border-radius:2px"></div>Total Receipts (Base)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;border-radius:2px"></div>Total Receipts (What-If)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ef4444;border-radius:2px"></div>Total Cash Out</div>
       </div>
     </div>
   </div>
@@ -2292,8 +2297,8 @@ function updateWhatIf() {
   nd.textContent = (negDelta===0?'Same as base':(negDelta>0?'▼ +':'▲ ')+Math.abs(negDelta)+' months vs base');
   nd.className   = 'wi-impact-delta '+(negDelta<=0?'pos':'neg');
 
-  // Draw chart
-  drawTwoLineChart('wiChartG', base.cashPosition, cashPosition, '#6366f1', '#f59e0b', 680, 200, 40, 10, 15, 35);
+  // Draw chart with all 5 series
+  drawWhatIfChart('wiChartG', base.cashPosition, cashPosition, base.totalReceipts, totalReceipts, base.totalPaidOut, totalPaidOut);
 }
 
 // ─────────────────────────────────────────────
@@ -2737,6 +2742,131 @@ function updateSensitivity(base) {
         </div>
         <div style="font-size:11px;font-weight:800;color:#1e293b;width:70px;text-align:right">₹${d.impact10.toFixed(1)}L/10%</div>
       </div>`;
+  });
+}
+
+// ─────────────────────────────────────────────
+//  WHAT-IF 5-LINE CHART
+//  baseCash, adjCash, baseReceipts, adjReceipts, basePaidOut, adjPaidOut
+// ─────────────────────────────────────────────
+function drawWhatIfChart(gid, baseCash, adjCash, baseRec, adjRec, basePaidOut, adjPaidOut) {
+  const g = document.getElementById(gid);
+  g.innerHTML = '';
+  const W=680, H=240, PL=44, PR=14, PT=16, PB=40;
+  const cW=W-PL-PR, cH=H-PT-PB;
+
+  // Combine all series to get global min/max
+  const allV = [...baseCash, ...adjCash, ...baseRec, ...adjRec, ...basePaidOut, ...adjPaidOut];
+  const minV = Math.min(...allV);
+  const maxV = Math.max(...allV);
+  const range = maxV - minV || 1;
+  const bw = cW / N;
+  const xc = i => PL + bw * i + bw / 2;
+  const yc = v => PT + cH - ((v - minV) / range) * cH;
+
+  // ── Grid lines ──
+  for (let gi = 0; gi <= 5; gi++) {
+    const gv = minV + (range * gi / 5);
+    const gy = yc(gv);
+    const gl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    gl.setAttribute('x1', PL); gl.setAttribute('x2', W - PR);
+    gl.setAttribute('y1', gy); gl.setAttribute('y2', gy);
+    gl.setAttribute('stroke', '#e2e8f0'); gl.setAttribute('stroke-width', '1');
+    g.appendChild(gl);
+    const gt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    gt.setAttribute('x', PL - 4); gt.setAttribute('y', gy + 3);
+    gt.setAttribute('text-anchor', 'end'); gt.setAttribute('font-size', '8');
+    gt.setAttribute('fill', '#94a3b8'); gt.textContent = Math.round(gv);
+    g.appendChild(gt);
+  }
+
+  // ── Zero line (if negative values exist) ──
+  if (minV < 0) {
+    const y0 = yc(0);
+    const zl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    zl.setAttribute('x1', PL); zl.setAttribute('x2', W - PR);
+    zl.setAttribute('y1', y0); zl.setAttribute('y2', y0);
+    zl.setAttribute('stroke', '#94a3b8'); zl.setAttribute('stroke-dasharray', '5,3');
+    zl.setAttribute('stroke-width', '1.5'); g.appendChild(zl);
+    const zt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    zt.setAttribute('x', PL - 4); zt.setAttribute('y', y0 + 3);
+    zt.setAttribute('text-anchor', 'end'); zt.setAttribute('font-size', '8');
+    zt.setAttribute('fill', '#94a3b8'); zt.textContent = '0'; g.appendChild(zt);
+  }
+
+  // ── Area fills ──
+  const makeArea = (vals, color, opacity) => {
+    const y0b = Math.max(PT, Math.min(H - PB, yc(0)));
+    let d = `M ${xc(0)} ${y0b}`;
+    vals.forEach((v, i) => { d += ` L ${xc(i)} ${yc(v)}`; });
+    d += ` L ${xc(N - 1)} ${y0b} Z`;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', color);
+    path.setAttribute('opacity', opacity);
+    g.appendChild(path);
+  };
+  makeArea(baseRec,    'rgba(16,185,129,0.07)',  1);
+  makeArea(adjRec,     'rgba(59,130,246,0.07)',  1);
+  makeArea(basePaidOut,'rgba(239,68,68,0.07)',   1);
+
+  // ── Line drawer ──
+  const makeLine = (vals, color, sw, dash) => {
+    let d = '';
+    vals.forEach((v, i) => { d += (i === 0 ? 'M' : 'L') + ` ${xc(i)} ${yc(v)} `; });
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d); path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', color); path.setAttribute('stroke-width', sw || 2);
+    path.setAttribute('stroke-linejoin', 'round'); path.setAttribute('stroke-linecap', 'round');
+    if (dash) path.setAttribute('stroke-dasharray', dash);
+    g.appendChild(path);
+    return path;
+  };
+
+  // Draw order: background lines first, cash positions on top
+  makeLine(basePaidOut, '#ef4444', 1.5, '5,3');   // Total Cash Out (dashed red)
+  makeLine(baseRec,     '#10b981', 1.5);            // Base Total Receipts (solid green)
+  makeLine(adjRec,      '#3b82f6', 1.5, '4,2');    // What-If Receipts (dashed blue)
+  makeLine(baseCash,    '#6366f1', 2.5);            // Base Cash Position (solid indigo)
+  makeLine(adjCash,     '#f59e0b', 2.5);            // What-If Cash Position (solid amber)
+
+  // ── Dots + value labels for the two Cash Position lines ──
+  const drawDots = (vals, dotColor, labelYOffset) => {
+    vals.forEach((v, i) => {
+      const cx = xc(i), cy = yc(v);
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', cx); circle.setAttribute('cy', cy);
+      circle.setAttribute('r', '3.5');
+      circle.setAttribute('fill', v < 0 ? '#ef4444' : dotColor);
+      circle.setAttribute('stroke', '#fff'); circle.setAttribute('stroke-width', '1.5');
+      g.appendChild(circle);
+    });
+  };
+  drawDots(baseCash, '#6366f1', -7);
+  drawDots(adjCash,  '#f59e0b', 7);
+
+  // ── Value labels for What-If cash position (top line) ──
+  adjCash.forEach((v, i) => {
+    const cx = xc(i), cy = yc(v);
+    const neg = v < 0;
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    lbl.setAttribute('x', cx);
+    lbl.setAttribute('y', neg ? cy + 12 : cy - 7);
+    lbl.setAttribute('text-anchor', 'middle');
+    lbl.setAttribute('font-size', '7.5');
+    lbl.setAttribute('font-weight', '700');
+    lbl.setAttribute('fill', neg ? '#dc2626' : '#d97706');
+    lbl.textContent = (neg ? '–' : '') + Math.abs(v).toFixed(1);
+    g.appendChild(lbl);
+  });
+
+  // ── X-axis month labels ──
+  MONTHS.forEach((m, i) => {
+    const xt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    xt.setAttribute('x', xc(i)); xt.setAttribute('y', H - 5);
+    xt.setAttribute('text-anchor', 'middle'); xt.setAttribute('font-size', '8');
+    xt.setAttribute('fill', '#64748b'); xt.textContent = m.substring(0, 3);
+    g.appendChild(xt);
   });
 }
 
