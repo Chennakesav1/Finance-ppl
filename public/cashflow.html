@@ -1526,16 +1526,17 @@
     <!-- VIEW SELECTOR -->
     <div class="wf-card">
       <h4>🌊 Waterfall Analysis</h4>
-      <p class="wf-subtitle">Visualise how cash builds or erodes from opening balance through receipts and expenditures to closing position — choose annual or monthly view.</p>
+      <p class="wf-subtitle">Visualise how cash builds or erodes from opening balance through receipts and expenditures to closing position. Choose <strong>Annual</strong> for the full-year FY bridge, <strong>Month-by-Month</strong> for a 12-month overview, <strong>Single Month</strong> to drill into any one month's cost breakdown, or <strong>Cost Category</strong> for an annual spend waterfall.</p>
       <div class="wf-controls">
         <label>View:</label>
-        <select id="wfViewSel" onchange="drawWaterfall()">
-          <option value="annual">📅 Annual (FY Bridge)</option>
-          <option value="monthly">📆 Month-by-Month</option>
+        <select id="wfViewSel" onchange="onWfViewChange()">
+          <option value="annual">📅 Annual FY Bridge</option>
+          <option value="monthly">📆 Month-by-Month Overview</option>
+          <option value="single">🔍 Single Month Detail</option>
           <option value="cost">💸 Cost Category Breakdown</option>
         </select>
-        <label style="margin-left:8px;">Month:</label>
-        <select id="wfMonthSel" onchange="drawWaterfall()">
+        <label id="wfMonthLabel" style="margin-left:12px;display:none;">Month:</label>
+        <select id="wfMonthSel" onchange="drawWaterfall()" style="display:none;">
         </select>
       </div>
       <!-- SVG container for waterfall chart -->
@@ -1544,9 +1545,10 @@
       </div>
       <div class="wf-legend">
         <div class="wf-leg-item"><div class="wf-leg-dot" style="background:#6366f1"></div>Opening / Start</div>
-        <div class="wf-leg-item"><div class="wf-leg-dot" style="background:#10b981"></div>Inflow (+)</div>
-        <div class="wf-leg-item"><div class="wf-leg-dot" style="background:#ef4444"></div>Outflow (−)</div>
-        <div class="wf-leg-item"><div class="wf-leg-dot" style="background:#0ea5e9"></div>Closing / End</div>
+        <div class="wf-leg-item"><div class="wf-leg-dot" style="background:#10b981"></div>Inflow / Receipts (+)</div>
+        <div class="wf-leg-item"><div class="wf-leg-dot" style="background:#ef4444"></div>Outflow / Cash Out (−)</div>
+        <div class="wf-leg-item"><div class="wf-leg-dot" style="background:#0ea5e9"></div>Closing / Year-End</div>
+        <div class="wf-leg-item" style="color:#64748b;font-size:10px;margin-left:4px">— <em>Single Month: select month to drill into cost breakdown</em></div>
       </div>
     </div>
 
@@ -2289,19 +2291,29 @@ function drawSummaryTable(d) {
 //  WATERFALL ANALYSIS — full implementation
 // ─────────────────────────────────────────────
 
-// Populate the month-selector dropdown once on first call
-let _wfMonthsPopulated = false;
+// Populate the month-selector dropdown (always refresh on view change)
 function _populateWfMonths() {
-  if (_wfMonthsPopulated) return;
   const sel = document.getElementById('wfMonthSel');
   if (!sel) return;
+  const prev = sel.value;
   sel.innerHTML = '';
   MONTHS.forEach((m,i) => {
     const o = document.createElement('option');
     o.value = i; o.textContent = m;
     sel.appendChild(o);
   });
-  _wfMonthsPopulated = true;
+  // restore previous selection if still valid
+  if (prev !== '' && parseInt(prev) < MONTHS.length) sel.value = prev;
+}
+
+// Show/hide month selector based on chosen view
+function onWfViewChange() {
+  const view = document.getElementById('wfViewSel').value;
+  const show = view === 'single';
+  document.getElementById('wfMonthLabel').style.display = show ? '' : 'none';
+  document.getElementById('wfMonthSel').style.display   = show ? '' : 'none';
+  if (show) _populateWfMonths();
+  drawWaterfall();
 }
 
 // ── SVG helper ──
@@ -2311,68 +2323,37 @@ function _svgEl(tag, attrs) {
   return el;
 }
 
-// ── Draw annual FY bridge waterfall ──
-function _drawAnnualWaterfall(d, svgId) {
-  const svgEl = document.getElementById(svgId);
-  svgEl.innerHTML = '';
-
-  const ob = d.cashOnHand[0];
-  const totalRec  = d.totalReceipts.reduce((a,b)=>a+b,0);
-  const rmTotal   = d.rm.reduce((a,b)=>a+b,0);
-  const salTotal  = DATA.salaries.reduce((a,b)=>a+b,0);
-  const finTotal  = (DATA.loanPrincipal.concat(DATA.interestTerm, DATA.interestWC, DATA.otherBank)
-                      .reduce((a,b)=>a+b,0)) + DATA.unsecuredLoan.reduce((a,b)=>a+b,0);
-  const consTotal = ['quenchOil','lubOil','innoline','dephosact','blackeningOil','methanol',
-                     'lpg','kmno4','causticSoda','diesel','rpoOil']
-                     .reduce((s,k)=>s+DATA[k].reduce((a,b)=>a+b,0),0);
-  const toolingTotal = DATA.newTooling.reduce((a,b)=>a+b,0) + d.repeatTool.reduce((a,b)=>a+b,0);
-  const packTotal = d.boxIn.reduce((a,b)=>a+b,0) + d.boxOut.reduce((a,b)=>a+b,0) + d.packStick.reduce((a,b)=>a+b,0);
-  const trTotal   = d.transport.reduce((a,b)=>a+b,0) + d.outsource.reduce((a,b)=>a+b,0);
-  const ohTotal   = ['food','repairsMaint','advertising','carDelivery','accountingLegal',
-                     'rent','telephone','eb','insurance','taxes','miscellaneous']
-                     .reduce((s,k)=>s+DATA[k].reduce((a,b)=>a+b,0),0);
-  const closing   = d.cashPosition[N-1];
-
-  const bars = [
-    { label:'Opening\nBalance', val: ob,           start: 0,          type:'start' },
-    { label:'Total\nReceipts',  val: totalRec,      start: ob,         type:'pos'   },
-    { label:'Raw\nMaterial',    val: -rmTotal,      start: ob+totalRec,type:'neg'   },
-    { label:'Salaries',         val: -salTotal,     start: ob+totalRec-rmTotal, type:'neg' },
-    { label:'Financing',        val: -finTotal,     start: ob+totalRec-rmTotal-salTotal, type:'neg' },
-    { label:'Consumables',      val: -consTotal,    start: ob+totalRec-rmTotal-salTotal-finTotal, type:'neg' },
-    { label:'Tooling &\nPacking', val: -(toolingTotal+packTotal),
-      start: ob+totalRec-rmTotal-salTotal-finTotal-consTotal, type:'neg' },
-    { label:'Transport\n& OS',  val: -trTotal,
-      start: ob+totalRec-rmTotal-salTotal-finTotal-consTotal-(toolingTotal+packTotal), type:'neg' },
-    { label:'Overhead',         val: -ohTotal,
-      start: ob+totalRec-rmTotal-salTotal-finTotal-consTotal-(toolingTotal+packTotal)-trTotal, type:'neg' },
-    { label:'Year-End\nCash',   val: closing,       start: 0,          type:'end'   },
-  ];
-
-  const W = 760, H = 280, PL = 8, PR = 8, PT = 20, PB = 55;
+// ── Generic waterfall bar renderer (used by annual, single-month, cost) ──
+function _renderWfBars(svgEl, bars, W, H, PL, PR, PT, PB) {
   const cW = W - PL - PR, cH = H - PT - PB;
   svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svgEl.innerHTML = '';
 
-  const allVals = bars.flatMap(b => [b.start, b.start + b.val]);
+  // Compute all Y extremes (start & start+val for floating bars; 0 & val for end/start-absolute)
+  const allVals = bars.flatMap(b => {
+    if (b.type === 'start') return [0, b.val];
+    if (b.type === 'end')   return [0, b.val];
+    return [b.start, b.start + b.val];
+  });
   const minV = Math.min(0, ...allVals);
-  const maxV = Math.max(...allVals);
+  const maxV = Math.max(0, ...allVals);
   const range = maxV - minV || 1;
+  const yc = v => PT + cH - ((v - minV) / range) * cH;
 
-  const yc  = v => PT + cH - ((v - minV) / range) * cH;
   const bCount = bars.length;
   const bw = cW / bCount;
-  const pad = bw * 0.18;
+  const pad = bw * 0.16;
+  const COLOR = { start:'#6366f1', pos:'#10b981', neg:'#ef4444', end:'#0ea5e9' };
 
-  // Grid
+  // Grid lines
   for (let gi = 0; gi <= 5; gi++) {
     const gv = minV + (range * gi / 5);
     const gy = yc(gv);
     svgEl.appendChild(_svgEl('line', { x1:PL, x2:W-PR, y1:gy, y2:gy,
-      stroke:'#e2e8f0', 'stroke-width':'1', 'stroke-dasharray':'4,3' }));
+      stroke: gi===0 ? '#cbd5e1' : '#e2e8f0', 'stroke-width':'1', 'stroke-dasharray':'4,3' }));
     const lt = _svgEl('text', { x:PL+2, y:gy-3, 'font-size':'7.5', fill:'#94a3b8', 'font-weight':'500' });
     lt.textContent = Math.round(gv); svgEl.appendChild(lt);
   }
-
   // Zero line
   if (minV < 0) {
     const y0 = yc(0);
@@ -2380,53 +2361,67 @@ function _drawAnnualWaterfall(d, svgId) {
       stroke:'#64748b', 'stroke-width':'1.5', 'stroke-dasharray':'6,3' }));
   }
 
-  const COLOR = { start:'#6366f1', pos:'#10b981', neg:'#ef4444', end:'#0ea5e9' };
-
   bars.forEach((bar, i) => {
     const x = PL + bw * i + pad;
     const bWidth = bw - pad * 2;
-    const isEnd = bar.type === 'end';
+    const color = COLOR[bar.type];
 
-    const top    = isEnd ? yc(bar.val) : (bar.val >= 0 ? yc(bar.start + bar.val) : yc(bar.start));
-    const bottom = isEnd ? yc(0) : (bar.val >= 0 ? yc(bar.start) : yc(bar.start + bar.val));
-    const barH   = Math.max(2, bottom - top);
-    const color  = COLOR[bar.type];
+    // Compute bar top/bottom in SVG coords
+    let barTop, barBot;
+    if (bar.type === 'start' || bar.type === 'end') {
+      barTop = yc(Math.max(0, bar.val));
+      barBot = yc(Math.min(0, bar.val));
+    } else if (bar.val >= 0) {
+      barTop = yc(bar.start + bar.val);
+      barBot = yc(bar.start);
+    } else {
+      barTop = yc(bar.start);
+      barBot = yc(bar.start + bar.val);
+    }
+    const barH = Math.max(2, barBot - barTop);
 
-    // Connector line to previous bar (dashed)
-    if (i > 0 && !isEnd) {
-      const prevBar = bars[i - 1];
-      const prevTop = prevBar.type === 'end' ? yc(prevBar.val) : yc(prevBar.start + prevBar.val);
-      const connY   = prevBar.val >= 0 ? prevTop : yc(prevBar.start + prevBar.val);
-      const curY    = bar.val >= 0 ? yc(bar.start) : yc(bar.start);
+    // Dashed connector from previous bar's landing level
+    if (i > 0) {
+      const prev = bars[i - 1];
+      let connY;
+      if (prev.type === 'start') connY = yc(prev.val);
+      else if (prev.type === 'end') connY = yc(prev.val);
+      else connY = yc(prev.start + prev.val);  // top of prev (its landing)
+
+      // The current bar's "base" where connector meets it
+      let curBase;
+      if (bar.type === 'start' || bar.type === 'end') curBase = yc(Math.min(0, bar.val));
+      else curBase = (bar.val >= 0) ? yc(bar.start) : yc(bar.start);
+
       svgEl.appendChild(_svgEl('line', {
-        x1: x - pad, x2: x, y1: curY, y2: curY,
+        x1: PL + bw * (i-1) + pad + (bw - pad*2),  // right edge of prev bar
+        x2: x,
+        y1: connY, y2: connY,
         stroke:'#cbd5e1', 'stroke-width':'0.8', 'stroke-dasharray':'3,2'
       }));
     }
 
-    // Bar rect
-    const rect = _svgEl('rect', {
-      x, y: top, width: bWidth, height: barH,
-      fill: color, rx: '3', opacity: bar.type==='end'?'0.85':'0.9'
-    });
-    svgEl.appendChild(rect);
+    // Bar rectangle
+    svgEl.appendChild(_svgEl('rect', {
+      x, y: barTop, width: bWidth, height: barH,
+      fill: color, rx:'3', opacity: bar.type==='end' ? '0.85' : '0.9'
+    }));
 
-    // Value label above/below bar
-    const labelY = bar.val >= 0 ? top - 4 : bottom + 10;
+    // Value label
+    const labelY = (bar.type === 'neg') ? (barBot + 10) : (barTop - 4);
     const vt = _svgEl('text', {
       x: x + bWidth/2, y: labelY,
       'text-anchor':'middle', 'font-size':'8', 'font-weight':'700',
       fill: bar.val < 0 ? '#b91c1c' : (bar.type==='end' ? '#0369a1' : bar.val>0 ? '#059669' : '#475569')
     });
-    vt.textContent = (bar.val < 0 ? '–₹' : '₹') + Math.abs(bar.val).toFixed(1) + 'L';
+    vt.textContent = (bar.val < 0 ? '–₹' : '₹') + Math.abs(bar.val).toFixed(2) + 'L';
     svgEl.appendChild(vt);
 
-    // X axis label (multi-line)
-    const lines = bar.label.split('\n');
-    lines.forEach((ln, li) => {
+    // X-axis label (supports \n for multi-line)
+    bar.label.split('\n').forEach((ln, li) => {
       const xt = _svgEl('text', {
-        x: x + bWidth/2, y: H - PB + 14 + li * 12,
-        'text-anchor':'middle', 'font-size':'8.5', 'font-weight':'600', fill:'#475569'
+        x: x + bWidth/2, y: H - PB + 14 + li * 11,
+        'text-anchor':'middle', 'font-size':'8', 'font-weight':'600', fill:'#475569'
       });
       xt.textContent = ln;
       svgEl.appendChild(xt);
@@ -2434,205 +2429,235 @@ function _drawAnnualWaterfall(d, svgId) {
   });
 }
 
-// ── Draw monthly waterfall (one bar per month) ──
+// ── Draw annual FY bridge waterfall ──
+function _drawAnnualWaterfall(d, svgId) {
+  const svgEl = document.getElementById(svgId);
+
+  const ob       = d.cashOnHand[0];
+  const totalRec = d.totalReceipts.reduce((a,b)=>a+b,0);
+  const rmTotal  = d.rm.reduce((a,b)=>a+b,0);
+  const salTotal = DATA.salaries.reduce((a,b)=>a+b,0);
+  const finTotal = DATA.loanPrincipal.concat(DATA.interestTerm, DATA.interestWC, DATA.otherBank, DATA.unsecuredLoan)
+                     .reduce((a,b)=>a+b,0);
+  const consTotal = ['quenchOil','lubOil','innoline','dephosact','blackeningOil','methanol',
+                     'lpg','kmno4','causticSoda','diesel','rpoOil']
+                     .reduce((s,k)=>s+DATA[k].reduce((a,b)=>a+b,0),0);
+  const toolPack = d.repeatTool.reduce((a,b)=>a+b,0) + DATA.newTooling.reduce((a,b)=>a+b,0)
+                 + d.boxIn.reduce((a,b)=>a+b,0) + d.boxOut.reduce((a,b)=>a+b,0) + d.packStick.reduce((a,b)=>a+b,0);
+  const trTotal  = d.transport.reduce((a,b)=>a+b,0) + d.outsource.reduce((a,b)=>a+b,0);
+  const ohTotal  = ['food','repairsMaint','advertising','carDelivery','accountingLegal',
+                    'rent','telephone','eb','insurance','taxes','miscellaneous']
+                    .reduce((s,k)=>s+DATA[k].reduce((a,b)=>a+b,0),0);
+  const closing  = d.cashPosition[N-1];
+
+  // Build bars with running accumulator — no more hand-chained math
+  const buckets = [
+    { label:'Opening\nBalance', val: ob,        type:'start' },
+    { label:'Total\nReceipts',  val: totalRec,  type:'pos'   },
+    { label:'Raw\nMaterial',    val:-rmTotal,   type:'neg'   },
+    { label:'Salaries',         val:-salTotal,  type:'neg'   },
+    { label:'Financing',        val:-finTotal,  type:'neg'   },
+    { label:'Consumables',      val:-consTotal, type:'neg'   },
+    { label:'Tooling &\nPacking',val:-toolPack, type:'neg'   },
+    { label:'Transport\n& OS',  val:-trTotal,   type:'neg'   },
+    { label:'Overhead',         val:-ohTotal,   type:'neg'   },
+    { label:'Year-End\nCash',   val: closing,   type:'end'   },
+  ];
+
+  // Assign floating starts via accumulator
+  let run = 0;
+  const bars = buckets.map(b => {
+    if (b.type === 'start') { const s = 0; run = b.val; return {...b, start:s}; }
+    if (b.type === 'end')   { return {...b, start:0}; }
+    const s = run; run += b.val; return {...b, start:s};
+  });
+
+  _renderWfBars(svgEl, bars, 780, 290, 38, 8, 22, 58);
+}
+
+// ── Draw monthly overview (all 12 months, dual-bar: receipts vs paidOut) ──
 function _drawMonthlyWaterfall(d, svgId) {
   const svgEl = document.getElementById(svgId);
   svgEl.innerHTML = '';
 
-  const netFlows = d.totalReceipts.map((r,i) => r - d.totalPaidOut[i]);
-
-  // Each bar: floating from prev closing
-  const bars = [];
-  for (let i = 0; i < N; i++) {
-    bars.push({
-      label: MONTHS[i],
-      opening: d.cashOnHand[i],
-      receipts: d.totalReceipts[i],
-      paidOut:  d.totalPaidOut[i],
-      closing:  d.cashPosition[i],
-      net:      netFlows[i]
-    });
-  }
-
-  const W = 760, H = 260, PL = 42, PR = 10, PT = 18, PB = 36;
+  const W = 780, H = 270, PL = 42, PR = 10, PT = 18, PB = 38;
   const cW = W - PL - PR, cH = H - PT - PB;
   svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
 
-  const allV = [...d.cashOnHand, ...d.cashPosition, ...d.totalReceipts.map((_,i)=>d.cashOnHand[i]+d.totalReceipts[i])];
-  const minV = Math.min(0, ...allV);
+  // Build per-month data
+  const months = Array.from({length:N}, (_,i) => ({
+    label:    MONTHS[i],
+    opening:  d.cashOnHand[i],
+    receipts: d.totalReceipts[i],
+    paidOut:  d.totalPaidOut[i],
+    closing:  d.cashPosition[i],
+    net:      d.totalReceipts[i] - d.totalPaidOut[i]
+  }));
+
+  const allV = months.flatMap(m => [m.opening, m.opening + m.receipts, m.opening - m.paidOut, m.closing, 0]);
+  const minV = Math.min(...allV);
   const maxV = Math.max(...allV);
   const range = maxV - minV || 1;
-
   const yc = v => PT + cH - ((v - minV) / range) * cH;
+
   const bw = cW / N;
-  const pad = bw * 0.12;
+  const pad = bw * 0.1;
 
   // Grid
   for (let gi = 0; gi <= 5; gi++) {
     const gv = minV + (range * gi / 5);
     const gy = yc(gv);
     svgEl.appendChild(_svgEl('line', { x1:PL, x2:W-PR, y1:gy, y2:gy,
-      stroke: gi===0?'#cbd5e1':'#e2e8f0', 'stroke-width':'1', 'stroke-dasharray':'4,3' }));
+      stroke: gi===0 ? '#cbd5e1' : '#e2e8f0', 'stroke-width':'1', 'stroke-dasharray':'4,3' }));
     const lt = _svgEl('text', { x:PL-3, y:gy+3.5, 'text-anchor':'end', 'font-size':'7.5', fill:'#94a3b8' });
     lt.textContent = Math.round(gv); svgEl.appendChild(lt);
   }
-
   if (minV < 0) {
     const y0 = yc(0);
     svgEl.appendChild(_svgEl('line', { x1:PL, x2:W-PR, y1:y0, y2:y0,
-      stroke:'#64748b', 'stroke-width':'1.2', 'stroke-dasharray':'5,3' }));
+      stroke:'#64748b', 'stroke-width':'1.5', 'stroke-dasharray':'6,3' }));
   }
 
-  bars.forEach((bar, i) => {
-    const x = PL + bw * i + pad;
-    const bWidth = (bw - pad * 2) / 2 - 1; // two sub-bars side by side
+  months.forEach((m, i) => {
+    const x      = PL + bw * i + pad;
+    const hw     = (bw - pad * 2) / 2 - 1; // half-width for dual bars
 
-    // Receipt bar (stacked from opening)
-    const recTop    = yc(bar.opening + bar.receipts);
-    const recBase   = yc(bar.opening);
-    const recH      = Math.max(2, recBase - recTop);
-    svgEl.appendChild(_svgEl('rect', { x, y: recTop, width: bWidth, height: recH,
-      fill:'rgba(16,185,129,0.75)', rx:'2' }));
+    // ── Receipt bar (green, stacked from opening upward) ──
+    const recTop = yc(m.opening + m.receipts);
+    const recBot = yc(m.opening);
+    const recH   = Math.max(2, recBot - recTop);
+    svgEl.appendChild(_svgEl('rect', { x, y:recTop, width:hw, height:recH,
+      fill:'rgba(16,185,129,0.8)', rx:'2' }));
 
-    // PaidOut bar (stacked from opening, going down)
-    const outTop    = yc(bar.opening);
-    const outBottom = yc(bar.opening - bar.paidOut);
-    const outH      = Math.max(2, Math.abs(outBottom - outTop));
-    svgEl.appendChild(_svgEl('rect', { x: x + bWidth + 2, y: Math.min(outTop, outBottom),
-      width: bWidth, height: outH, fill:'rgba(239,68,68,0.75)', rx:'2' }));
+    // ── PaidOut bar (red, stacked from opening downward) ──
+    const outTop = yc(m.opening);
+    const outBot = yc(m.opening - m.paidOut);
+    const outH   = Math.max(2, Math.abs(outBot - outTop));
+    svgEl.appendChild(_svgEl('rect', { x: x+hw+2, y:Math.min(outTop,outBot), width:hw, height:outH,
+      fill:'rgba(239,68,68,0.8)', rx:'2' }));
 
-    // Closing dot + line
-    const cy = yc(bar.closing);
-    svgEl.appendChild(_svgEl('circle', { cx: x + bWidth, cy, r:'3',
-      fill: bar.closing >= 0 ? '#10b981' : '#ef4444', stroke:'#fff', 'stroke-width':'1.5' }));
+    // ── Closing balance dot ──
+    const dotCx = x + hw + 1; // centre between two bars
+    const dotCy = yc(m.closing);
+    svgEl.appendChild(_svgEl('circle', { cx:dotCx, cy:dotCy, r:'3',
+      fill: m.closing >= 0 ? '#10b981' : '#ef4444', stroke:'#fff', 'stroke-width':'1.5' }));
+
+    // Connector to next month opening
     if (i < N-1) {
-      const nextX = PL + bw*(i+1) + pad + bWidth;
-      const nextY = yc(bars[i+1].opening);
-      svgEl.appendChild(_svgEl('line', { x1: x+bWidth, x2: nextX, y1: cy, y2: nextY,
+      const nextDotCx = PL + bw*(i+1) + pad + hw + 1;
+      const nextDotCy = yc(months[i+1].opening);
+      svgEl.appendChild(_svgEl('line', { x1:dotCx, y1:dotCy, x2:nextDotCx, y2:nextDotCy,
         stroke:'#94a3b8', 'stroke-width':'1', 'stroke-dasharray':'3,2' }));
     }
 
-    // Month label
-    const xt = _svgEl('text', { x: x + bWidth, y: H - 5,
-      'text-anchor':'middle', 'font-size':'7.5', fill:'#64748b', 'font-weight':'600' });
-    xt.textContent = bar.label.substring(0,3); svgEl.appendChild(xt);
-
-    // Net value label
-    const vt = _svgEl('text', {
-      x: x + bWidth, y: bar.net >= 0 ? recTop - 3 : outBottom + 10,
+    // Net label above/below
+    const netLabelY = m.net >= 0 ? recTop - 3 : outBot + 10;
+    const vt = _svgEl('text', { x:x+hw+1, y:netLabelY,
       'text-anchor':'middle', 'font-size':'7', 'font-weight':'700',
-      fill: bar.net >= 0 ? '#059669' : '#dc2626'
-    });
-    vt.textContent = (bar.net<0?'–':'+')+Math.abs(bar.net).toFixed(1); svgEl.appendChild(vt);
+      fill: m.net >= 0 ? '#059669' : '#dc2626' });
+    vt.textContent = (m.net<0?'–':'+')+Math.abs(m.net).toFixed(1); svgEl.appendChild(vt);
+
+    // Month label at bottom
+    const xt = _svgEl('text', { x:x+hw+1, y:H-6,
+      'text-anchor':'middle', 'font-size':'7.5', fill:'#64748b', 'font-weight':'600' });
+    xt.textContent = m.label.substring(0,3); svgEl.appendChild(xt);
   });
+}
+
+// ── Draw single-month bridge waterfall (4-bar: Opening → +Receipts → −PaidOut → Closing) ──
+function _drawSingleMonthWaterfall(d, svgId, mIdx) {
+  const svgEl = document.getElementById(svgId);
+  const ob  = d.cashOnHand[mIdx];
+  const rec = d.totalReceipts[mIdx];
+  const out = d.totalPaidOut[mIdx];
+  const cl  = d.cashPosition[mIdx];
+  const mn  = MONTHS[mIdx];
+
+  // Break down outflows for detail bars
+  const rmV   = d.rm[mIdx];
+  const salV  = DATA.salaries[mIdx];
+  const finV  = DATA.loanPrincipal[mIdx] + DATA.interestTerm[mIdx] + DATA.interestWC[mIdx]
+              + DATA.otherBank[mIdx] + DATA.unsecuredLoan[mIdx];
+  const consV = ['quenchOil','lubOil','innoline','dephosact','blackeningOil','methanol',
+                 'lpg','kmno4','causticSoda','diesel','rpoOil']
+                 .reduce((s,k)=>s+DATA[k][mIdx],0);
+  const toolV = DATA.newTooling[mIdx] + d.repeatTool[mIdx];
+  const packV = d.boxIn[mIdx] + d.boxOut[mIdx] + d.packStick[mIdx];
+  const trV   = d.transport[mIdx] + d.outsource[mIdx];
+  const ohV   = ['food','repairsMaint','advertising','carDelivery','accountingLegal',
+                 'rent','telephone','eb','insurance','taxes','miscellaneous']
+                 .reduce((s,k)=>s+DATA[k][mIdx],0);
+
+  const buckets = [
+    { label:`Opening\n${mn}`,    val: ob,    type:'start' },
+    { label:'Receipts',          val: rec,   type:'pos'   },
+    { label:'Raw\nMaterial',     val:-rmV,   type:'neg'   },
+    { label:'Salaries',          val:-salV,  type:'neg'   },
+    { label:'Financing',         val:-finV,  type:'neg'   },
+    { label:'Consumables',       val:-consV, type:'neg'   },
+    { label:'Tooling',           val:-toolV, type:'neg'   },
+    { label:'Packing',           val:-packV, type:'neg'   },
+    { label:'Transport\n& OS',   val:-trV,   type:'neg'   },
+    { label:'Overhead',          val:-ohV,   type:'neg'   },
+    { label:`Closing\n${mn}`,    val: cl,    type:'end'   },
+  ].filter(b => b.type === 'start' || b.type === 'end' || Math.abs(b.val) > 0.001);
+
+  // Assign floating starts via accumulator
+  let run = 0;
+  const bars = buckets.map(b => {
+    if (b.type === 'start') { run = b.val; return {...b, start:0}; }
+    if (b.type === 'end')   { return {...b, start:0}; }
+    const s = run; run += b.val; return {...b, start:s};
+  });
+
+  _renderWfBars(svgEl, bars, 780, 290, 38, 8, 22, 58);
 }
 
 // ── Draw cost breakdown waterfall ──
 function _drawCostWaterfall(d, svgId) {
   const svgEl = document.getElementById(svgId);
-  svgEl.innerHTML = '';
-
   const totalRec = d.totalReceipts.reduce((a,b)=>a+b,0);
   const ob = d.cashOnHand[0];
-  let running = ob + totalRec;
+  const avail = ob + totalRec;
 
-  const costs = [
-    { label:'Total Available', val: running,      type:'start' },
-    { label:'Raw Material',    val: d.rm.reduce((a,b)=>a+b,0), type:'neg' },
-    { label:'Salaries',        val: DATA.salaries.reduce((a,b)=>a+b,0), type:'neg' },
-    { label:'Financing',       val: (DATA.loanPrincipal.concat(DATA.interestTerm,DATA.interestWC,DATA.otherBank).reduce((a,b)=>a+b,0))+DATA.unsecuredLoan.reduce((a,b)=>a+b,0), type:'neg' },
-    { label:'Consumables',     val: ['quenchOil','lubOil','innoline','dephosact','blackeningOil','methanol','lpg','kmno4','causticSoda','diesel','rpoOil'].reduce((s,k)=>s+DATA[k].reduce((a,b)=>a+b,0),0), type:'neg' },
-    { label:'Tooling',         val: DATA.newTooling.reduce((a,b)=>a+b,0)+d.repeatTool.reduce((a,b)=>a+b,0), type:'neg' },
-    { label:'Packing',         val: d.boxIn.reduce((a,b)=>a+b,0)+d.boxOut.reduce((a,b)=>a+b,0)+d.packStick.reduce((a,b)=>a+b,0), type:'neg' },
-    { label:'Transport & OS',  val: d.transport.reduce((a,b)=>a+b,0)+d.outsource.reduce((a,b)=>a+b,0), type:'neg' },
-    { label:'Overheads',       val: ['food','repairsMaint','advertising','carDelivery','accountingLegal','rent','telephone','eb','insurance','taxes','miscellaneous'].reduce((s,k)=>s+DATA[k].reduce((a,b)=>a+b,0),0), type:'neg' },
-    { label:'Closing Cash',    val: d.cashPosition[N-1], type:'end' },
+  const buckets = [
+    { label:'Total\nAvailable', val: avail,  type:'start' },
+    { label:'Raw\nMaterial',    val: d.rm.reduce((a,b)=>a+b,0), type:'neg' },
+    { label:'Salaries',         val: DATA.salaries.reduce((a,b)=>a+b,0), type:'neg' },
+    { label:'Financing',        val: DATA.loanPrincipal.concat(DATA.interestTerm,DATA.interestWC,DATA.otherBank,DATA.unsecuredLoan).reduce((a,b)=>a+b,0), type:'neg' },
+    { label:'Consumables',      val: ['quenchOil','lubOil','innoline','dephosact','blackeningOil','methanol','lpg','kmno4','causticSoda','diesel','rpoOil'].reduce((s,k)=>s+DATA[k].reduce((a,b)=>a+b,0),0), type:'neg' },
+    { label:'Tooling',          val: DATA.newTooling.reduce((a,b)=>a+b,0)+d.repeatTool.reduce((a,b)=>a+b,0), type:'neg' },
+    { label:'Packing',          val: d.boxIn.reduce((a,b)=>a+b,0)+d.boxOut.reduce((a,b)=>a+b,0)+d.packStick.reduce((a,b)=>a+b,0), type:'neg' },
+    { label:'Transport\n& OS',  val: d.transport.reduce((a,b)=>a+b,0)+d.outsource.reduce((a,b)=>a+b,0), type:'neg' },
+    { label:'Overheads',        val: ['food','repairsMaint','advertising','carDelivery','accountingLegal','rent','telephone','eb','insurance','taxes','miscellaneous'].reduce((s,k)=>s+DATA[k].reduce((a,b)=>a+b,0),0), type:'neg' },
+    { label:'Closing\nCash',    val: d.cashPosition[N-1], type:'end' },
   ];
 
-  const W = 760, H = 270, PL = 8, PR = 8, PT = 18, PB = 50;
-  const cW = W - PL - PR, cH = H - PT - PB;
-  svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
-
-  // compute running starts
-  let run = ob + totalRec;
-  costs.forEach(c => {
-    if (c.type === 'start') { c.start = 0; }
-    else if (c.type === 'end') { c.start = 0; }
-    else { c.start = run; run -= c.val; }
+  // Assign floating starts via accumulator
+  let run = 0;
+  const bars = buckets.map(b => {
+    if (b.type === 'start') { run = b.val;  return {...b, start:0}; }
+    if (b.type === 'end')   { return {...b, start:0}; }
+    const s = run; run -= b.val; return {...b, val:-b.val, start:s};
   });
 
-  const allV = costs.flatMap(c => c.type==='end' ? [0, c.val] : [c.start, c.start - (c.type==='neg'?c.val:0)]);
-  const minV = Math.min(0, ...allV);
-  const maxV = Math.max(...allV);
-  const range = maxV - minV || 1;
-  const yc = v => PT + cH - ((v - minV) / range) * cH;
-  const bCount = costs.length;
-  const bw = cW / bCount;
-  const pad = bw * 0.15;
-  const COLOR = { start:'#6366f1', neg:'#ef4444', end:'#0ea5e9' };
-
-  // Grid
-  for (let gi = 0; gi <= 5; gi++) {
-    const gv = minV + (range * gi / 5);
-    const gy = yc(gv);
-    svgEl.appendChild(_svgEl('line', { x1:PL, x2:W-PR, y1:gy, y2:gy,
-      stroke:'#e2e8f0', 'stroke-width':'1', 'stroke-dasharray':'4,3' }));
-    const lt = _svgEl('text', { x:PL+2, y:gy-3, 'font-size':'7.5', fill:'#94a3b8' });
-    lt.textContent = Math.round(gv); svgEl.appendChild(lt);
-  }
-  if (minV < 0) {
-    const y0 = yc(0);
-    svgEl.appendChild(_svgEl('line', { x1:PL, x2:W-PR, y1:y0, y2:y0, stroke:'#64748b', 'stroke-width':'1.2', 'stroke-dasharray':'5,3' }));
-  }
-
-  costs.forEach((c, i) => {
-    const x = PL + bw * i + pad;
-    const bWidth = bw - pad * 2;
-    let top, barH;
-    if (c.type === 'start') { top = yc(c.val); barH = Math.max(2, yc(0) - top); }
-    else if (c.type === 'end') { top = yc(c.val); barH = Math.max(2, yc(0) - top); }
-    else { top = yc(c.start); barH = Math.max(2, yc(c.start - c.val) - top); }
-
-    svgEl.appendChild(_svgEl('rect', { x, y: top, width: bWidth, height: barH,
-      fill: COLOR[c.type], rx:'3', opacity:'0.88' }));
-
-    // Connector
-    if (i > 0 && c.type !== 'end') {
-      const prev = costs[i-1];
-      const lineY = c.type==='neg' ? yc(c.start) : yc(c.val);
-      svgEl.appendChild(_svgEl('line', { x1: x-pad, x2: x, y1: lineY, y2: lineY,
-        stroke:'#cbd5e1', 'stroke-width':'0.8', 'stroke-dasharray':'3,2' }));
-    }
-
-    // Value label
-    const labelY = c.type === 'end' ? yc(c.val) - 4 : (c.type==='start' ? yc(c.val) - 4 : top - 4);
-    const vt = _svgEl('text', { x: x + bWidth/2, y: labelY,
-      'text-anchor':'middle', 'font-size':'7.5', 'font-weight':'700',
-      fill: c.type==='neg' ? '#b91c1c' : (c.type==='end' ? '#0369a1' : '#059669') });
-    vt.textContent = '₹' + c.val.toFixed(1) + 'L'; svgEl.appendChild(vt);
-
-    const xt = _svgEl('text', { x: x + bWidth/2, y: H - PB + 14,
-      'text-anchor':'middle', 'font-size':'8', 'font-weight':'600', fill:'#475569' });
-    xt.textContent = c.label.length > 9 ? c.label.substring(0,9) : c.label; svgEl.appendChild(xt);
-  });
+  _renderWfBars(svgEl, bars, 780, 290, 38, 8, 22, 58);
 }
 
 // ── Main entry point called by the dropdowns ──
 function drawWaterfall() {
-  _wfMonthsPopulated = false; // allow re-population when months change
-  _populateWfMonths();
-  const d = compute();
+  const d    = compute();
   const view = document.getElementById('wfViewSel').value;
 
-  const svgEl = document.getElementById('wfSvg');
   if (view === 'annual') {
-    svgEl.setAttribute('viewBox','0 0 760 280');
     _drawAnnualWaterfall(d, 'wfSvg');
   } else if (view === 'monthly') {
-    svgEl.setAttribute('viewBox','0 0 760 260');
     _drawMonthlyWaterfall(d, 'wfSvg');
+  } else if (view === 'single') {
+    _populateWfMonths();
+    const mIdx = parseInt(document.getElementById('wfMonthSel').value) || 0;
+    _drawSingleMonthWaterfall(d, 'wfSvg', mIdx);
   } else if (view === 'cost') {
-    svgEl.setAttribute('viewBox','0 0 760 270');
     _drawCostWaterfall(d, 'wfSvg');
   }
 
@@ -2891,7 +2916,6 @@ function updateAnalytics(d) {
   updateWC();
   updateBurnRate(d);
   updateSensitivity(d);
-  _populateWfMonths();
   drawWaterfall();
 }
 
