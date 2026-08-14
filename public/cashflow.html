@@ -2507,9 +2507,10 @@ function _renderSteppedWfBars(svgEl, bars, W, H, PL, PR, PT, PB) {
 
   // Y extremes
   const allVals = bars.flatMap(b => {
-    if (b.type === 'stacked') return [0, b.val];
+    if (b.type === 'stacked' && b.val > 0) return [0, b.val];
+    if (b.type === 'stacked' && b.val <= 0) return [b.start + b.val, b.start];
     if (b.type === 'start') return [0, b.val];
-    if (b.type === 'end')   return [0, b.val];
+    if (b.type === 'end' || b.type === 'closing_green') return [0, b.val];
     return [b.start, b.start + b.val];
   });
   const minV = Math.min(0, ...allVals) * 1.04;
@@ -2524,7 +2525,7 @@ function _renderSteppedWfBars(svgEl, bars, W, H, PL, PR, PT, PB) {
 
   const COLOR = {
     start: '#6366f1', pos: '#10b981', neg: '#ef4444',
-    end: '#0ea5e9', balance: '#f59e0b'
+    end: '#0ea5e9', balance: '#f59e0b', closing_green: '#10b981'
   };
 
   // Draw background grid
@@ -2559,15 +2560,20 @@ function _renderSteppedWfBars(svgEl, bars, W, H, PL, PR, PT, PB) {
 
     // Compute bar top/bottom/landing
     let barTop, barBot, landingY;
-    if (bar.type === 'stacked') {
+    if (bar.type === 'stacked' && bar.val > 0) {
       barTop = yc(bar.val);          // top of tallest segment
       barBot = yc(0);                // base at zero axis
       landingY = yc(bar.val);
+    } else if (bar.type === 'stacked' && bar.val <= 0) {
+      // negative stacked: falls from bar.start down to bar.start+bar.val
+      barTop = yc(bar.start);
+      barBot = yc(bar.start + bar.val);
+      landingY = yc(bar.start + bar.val);
     } else if (bar.type === 'start') {
       barTop = yc(bar.val);
       barBot = yc(minV);
       landingY = yc(bar.val);
-    } else if (bar.type === 'end' || bar.type === 'balance') {
+    } else if (bar.type === 'end' || bar.type === 'closing_green' || bar.type === 'balance') {
       barTop = yc(Math.max(0, bar.val));
       barBot = yc(minV);
       landingY = yc(bar.val);
@@ -2586,9 +2592,10 @@ function _renderSteppedWfBars(svgEl, bars, W, H, PL, PR, PT, PB) {
     if (i > 0) {
       const prev = bars[i - 1];
       let prevLandY;
-      if (prev.type === 'stacked') prevLandY = yc(prev.val);
+      if (prev.type === 'stacked' && prev.val > 0) prevLandY = yc(prev.val);
+      else if (prev.type === 'stacked' && prev.val <= 0) prevLandY = yc(prev.start + prev.val);
       else if (prev.type === 'start') prevLandY = yc(prev.val);
-      else if (prev.type === 'end' || prev.type === 'balance') prevLandY = yc(prev.val);
+      else if (prev.type === 'end' || prev.type === 'closing_green' || prev.type === 'balance') prevLandY = yc(prev.val);
       else prevLandY = yc(prev.start + prev.val);
 
       const prevRight = PL + bw * (i - 1) + pad + bWidth;
@@ -2613,15 +2620,26 @@ function _renderSteppedWfBars(svgEl, bars, W, H, PL, PR, PT, PB) {
     }));
 
     if (bar.type === 'stacked' && bar.segments && bar.segments.length) {
-      // ── STACKED BAR: draw one segment per component, stacked bottom→top ──
+      // ── STACKED BAR: draw segments ──
+      // For positive stacked bars (Inflows): stack from 0 upward
+      // For negative stacked bars (Other Fixed Costs, Interest group): stack downward from bar.start
+      const isNegStacked = bar.val <= 0;
       const defs = svgEl.querySelector('defs') || (() => { const d = _svgEl('defs', {}); svgEl.prepend(d); return d; })();
-      let segBase = 0;
+      let segBase = isNegStacked ? bar.start : 0;
       const segs = bar.segments;
 
       segs.forEach((seg, si) => {
-        const segTop    = yc(segBase + seg.val);
-        const segBot    = yc(segBase);
-        const segH      = Math.max(3, segBot - segTop);
+        let segTop, segBot, segH;
+        if (isNegStacked) {
+          // Stack downward: each segment takes a slice going down
+          segTop = yc(segBase);
+          segBot = yc(segBase - seg.val);
+          segH   = Math.max(3, segBot - segTop);
+        } else {
+          segTop = yc(segBase + seg.val);
+          segBot = yc(segBase);
+          segH   = Math.max(3, segBot - segTop);
+        }
         const isBottom  = si === 0;
         const isTop     = si === segs.length - 1;
 
@@ -2634,21 +2652,24 @@ function _renderSteppedWfBars(svgEl, bars, W, H, PL, PR, PT, PB) {
         });
         segRect.classList.add('wf-bar-interactive');
 
-        // Segment tooltip
+        // Segment tooltip — show share of total for negative bars
+        const shareLabel = isNegStacked ? 'Share of total' : 'Share of inflow';
+        const totalAbs   = Math.abs(bar.val);
         const segTT = `
           <div class="tt-title">${seg.label}</div>
-          <div class="tt-val pos">₹${seg.val.toFixed(2)}L</div>
-          <div class="tt-row"><span>Share of inflow</span><span>${((seg.val / bar.val) * 100).toFixed(1)}%</span></div>
+          <div class="tt-val ${isNegStacked ? 'neg' : 'pos'}">₹${seg.val.toFixed(2)}L</div>
+          <div class="tt-row"><span>${shareLabel}</span><span>${((seg.val / totalAbs) * 100).toFixed(1)}%</span></div>
         `;
         segRect.addEventListener('mousemove', e => { WF_TT.show(e, segTT); WF_TT.move(e); });
         segRect.addEventListener('mouseleave', () => WF_TT.hide());
         svgEl.appendChild(segRect);
 
-        // Separator line between segments (not on top)
-        if (!isTop) {
+        // Separator line between segments (not on bottom for neg, not on top for pos)
+        const sepCondition = isNegStacked ? !isBottom : !isTop;
+        if (sepCondition) {
           svgEl.appendChild(_svgEl('line', {
             x1: x, x2: x + bWidth,
-            y1: segTop, y2: segTop,
+            y1: isNegStacked ? segBot : segTop, y2: isNegStacked ? segBot : segTop,
             stroke: '#fff', 'stroke-width': '1.5', 'pointer-events': 'none'
           }));
         }
@@ -2677,7 +2698,11 @@ function _renderSteppedWfBars(svgEl, bars, W, H, PL, PR, PT, PB) {
           svgEl.appendChild(nInner);
         }
 
-        segBase += seg.val;
+        if (isNegStacked) {
+          segBase -= seg.val;   // move downward
+        } else {
+          segBase += seg.val;   // move upward
+        }
       });
 
       // Gradient shimmer over whole stacked bar
@@ -2691,14 +2716,15 @@ function _renderSteppedWfBars(svgEl, bars, W, H, PL, PR, PT, PB) {
         fill: `url(#${gId})`, rx: '4', 'pointer-events': 'none'
       }));
 
-      // Total value label above stacked bar
-      const totalLabel = '₹' + bar.val.toFixed(1) + 'L';
+      // Total value label above/below stacked bar
+      const totalLabelTxt = (isNegStacked ? '–₹' : '₹') + Math.abs(bar.val).toFixed(1) + 'L';
+      const totalLabelY   = isNegStacked ? (barBot + 11) : (barTop - 5);
       const vtot = _svgEl('text', {
-        x: x + bWidth / 2, y: barTop - 5,
+        x: x + bWidth / 2, y: totalLabelY,
         'text-anchor': 'middle', 'font-size': '8', 'font-weight': '800',
-        fill: '#065f46', 'pointer-events': 'none'
+        fill: isNegStacked ? '#b91c1c' : '#065f46', 'pointer-events': 'none'
       });
-      vtot.textContent = totalLabel;
+      vtot.textContent = totalLabelTxt;
       svgEl.appendChild(vtot);
 
       // Color legend dots below x-axis label
@@ -2720,11 +2746,11 @@ function _renderSteppedWfBars(svgEl, bars, W, H, PL, PR, PT, PB) {
       const rect = _svgEl('rect', {
         x, y: barTop, width: bWidth, height: barH,
         fill: color, rx: '4',
-        opacity: (bar.type === 'end' || bar.type === 'balance') ? '0.9' : '0.88'
+        opacity: (bar.type === 'end' || bar.type === 'closing_green' || bar.type === 'balance') ? '0.9' : '0.88'
       });
       rect.classList.add('wf-bar-interactive');
 
-      const ttCls = bar.val < 0 ? 'neg' : (bar.type === 'end' || bar.type === 'balance') ? 'neu' : 'pos';
+      const ttCls = bar.val < 0 ? 'neg' : (bar.type === 'end' || bar.type === 'closing_green' || bar.type === 'balance') ? 'neu' : 'pos';
       const ttVal = (bar.val < 0 ? '–₹' : '₹') + Math.abs(bar.val).toFixed(2) + 'L';
       const ttRows = bar.tooltip || [];
       const ttHTML = `
@@ -2753,7 +2779,7 @@ function _renderSteppedWfBars(svgEl, bars, W, H, PL, PR, PT, PB) {
         const vt = _svgEl('text', {
           x: x + bWidth / 2, y: labelY,
           'text-anchor': 'middle', 'font-size': '8', 'font-weight': '800',
-          fill: bar.val < 0 ? '#b91c1c' : (bar.type === 'end' ? '#0369a1' : bar.type === 'balance' ? '#92400e' : '#065f46'),
+          fill: bar.val < 0 ? '#b91c1c' : (bar.type === 'closing_green' ? '#065f46' : bar.type === 'end' ? '#0369a1' : bar.type === 'balance' ? '#92400e' : '#065f46'),
           'pointer-events': 'none'
         });
         vt.textContent = dispVal;
@@ -2774,7 +2800,10 @@ function _renderSteppedWfBars(svgEl, bars, W, H, PL, PR, PT, PB) {
     });
 
     // ── Landing dot (top of bar, shared) ──
-    const dotColor = bar.type === 'stacked' ? '#6366f1' : color;
+    const dotColor = (bar.type === 'stacked' && bar.val > 0) ? '#6366f1'
+                   : (bar.type === 'stacked' && bar.val <= 0) ? '#ef4444'
+                   : bar.type === 'closing_green' ? '#10b981'
+                   : color;
     svgEl.appendChild(_svgEl('circle', {
       cx: x + bWidth / 2, cy: landingY, r: '2.5',
       fill: dotColor, stroke: '#fff', 'stroke-width': '1.2', 'pointer-events': 'none'
@@ -2986,9 +3015,28 @@ function _drawSingleMonthWaterfall(d, svgId, mIdx) {
               + DATA.otherBank[mIdx] + DATA.unsecuredLoan[mIdx]
               + DATA.capitalPurchase[mIdx] + DATA.otherStartup[mIdx] + DATA.reserveEscrow[mIdx];
   const consV = ['quenchOil','lubOil','innoline','dephosact','blackeningOil','methanol','lpg','kmno4','causticSoda','diesel','rpoOil'].reduce((s,k) => s + DATA[k][mIdx], 0);
-  const toolV = DATA.newTooling[mIdx] + d.repeatTool[mIdx];
-  const packV = d.boxIn[mIdx] + d.boxOut[mIdx] + d.packStick[mIdx];
-  const trV   = d.transport[mIdx] + d.outsource[mIdx];
+  const toolV    = DATA.newTooling[mIdx] + d.repeatTool[mIdx];
+  const packV    = d.boxIn[mIdx] + d.boxOut[mIdx] + d.packStick[mIdx];
+  const transpV  = d.transport[mIdx];   // Transportation only (separate bar)
+  const outsrcV  = d.outsource[mIdx];   // Outsourcing only (separate bar)
+
+  // Other Fixed Costs: Food, Advertising, Accounting+Legal, Rent, Telephone, Insurance, Taxes, Miscellaneous
+  const otherFixedV = DATA.food[mIdx] + DATA.advertising[mIdx]
+                    + DATA.accountingLegal[mIdx] + DATA.rent[mIdx] + DATA.telephone[mIdx]
+                    + DATA.insurance[mIdx] + DATA.taxes[mIdx] + DATA.miscellaneous[mIdx];
+  const ebV         = DATA.eb[mIdx];
+  const repairV     = DATA.repairsMaint[mIdx];
+
+  // Interest & other bank charges (grouped bar, before Net Cash)
+  const interestGroupV = DATA.interestTerm[mIdx] + DATA.interestWC[mIdx] + DATA.otherBank[mIdx]
+                       + DATA.unsecuredLoan[mIdx] + DATA.capitalPurchase[mIdx]
+                       + DATA.otherStartup[mIdx] + DATA.reserveEscrow[mIdx];
+  const loanPrincipalV = DATA.loanPrincipal[mIdx];
+
+  // Pre-balance deductions: RM + Tooling + Consumables + Packing + Transport + Outsourcing
+  const preBal = totalInflow - rmV - toolV - consV - packV - transpV - outsrcV;
+  // Pre-Net-Cash deductions (after balance): salaries + empCost (food) + otherFixed + EB + repair
+  const preNet = preBal - salV - DATA.food[mIdx] - otherFixedV - ebV - repairV;
 
   const buckets = [
     // ── STACKED: Opening Balance + Sales Receipts + Loan Injection ──
@@ -3008,50 +3056,79 @@ function _drawSingleMonthWaterfall(d, svgId, mIdx) {
         { k: 'Total Inflow',         v: '₹'+totalInflow.toFixed(2)+'L' },
       ]
     },
-    { label: 'Raw\nMaterial',   val: -rmV,   type: 'neg',
+    { label: 'Raw\nMaterial',   val: -rmV,     type: 'neg',
       tooltip: [{ k:'RM HT/SS', v:'₹'+rmV.toFixed(2)+'L' }, { k:'% of sales', v:((DATA.pctRM)*100).toFixed(0)+'%' }] },
-    { label: 'Tooling',         val: -toolV, type: 'neg',
+    { label: 'Tooling',         val: -toolV,   type: 'neg',
       tooltip: [{ k:'New tooling', v:'₹'+DATA.newTooling[mIdx].toFixed(2)+'L' }, { k:'Repeat tooling', v:'₹'+d.repeatTool[mIdx].toFixed(2)+'L' }] },
-    { label: 'Consumables',     val: -consV, type: 'neg',
+    { label: 'Consumables',     val: -consV,   type: 'neg',
       tooltip: [{ k:'Oils+LPG+Chem', v:'₹'+consV.toFixed(2)+'L' }] },
-    { label: 'Packing',         val: -packV, type: 'neg',
+    { label: 'Packing',         val: -packV,   type: 'neg',
       tooltip: [{ k:'Inner+Outer+Stickers', v:'₹'+packV.toFixed(2)+'L' }] },
-    { label: 'Transportation',  val: -trV,   type: 'neg',
-      tooltip: [{ k:'Transport', v:'₹'+d.transport[mIdx].toFixed(2)+'L' }, { k:'Outsourcing', v:'₹'+d.outsource[mIdx].toFixed(2)+'L' }] },
-    { label: 'Balance',         val: totalInflow-rmV-toolV-consV-packV-trV, type: 'balance',
-      tooltip: [{ k:'Mid-month balance', v:'₹'+(totalInflow-rmV-toolV-consV-packV-trV).toFixed(2)+'L' }] },
-    { label: 'Salaries',        val: -salV,  type: 'neg',
-      tooltip: [{ k:'People cost', v:'₹'+salV.toFixed(2)+'L' }] },
-    { label: 'Food',            val: -DATA.food[mIdx], type: 'neg',
-      tooltip: [{ k:'Food expense', v:'₹'+DATA.food[mIdx].toFixed(2)+'L' }] },
-    { label: 'Repair\nMaintenance', val: -DATA.repairsMaint[mIdx], type: 'neg',
-      tooltip: [{ k:'Repairs & Maint', v:'₹'+DATA.repairsMaint[mIdx].toFixed(2)+'L' }] },
-    { label: 'Advertising',     val: -DATA.advertising[mIdx], type: 'neg',
-      tooltip: [{ k:'Advertising', v:'₹'+DATA.advertising[mIdx].toFixed(2)+'L' }] },
-    { label: 'Account\nLegal All', val: -(DATA.accountingLegal[mIdx]+DATA.rent[mIdx]+DATA.telephone[mIdx]+DATA.eb[mIdx]+DATA.insurance[mIdx]+DATA.taxes[mIdx]+DATA.miscellaneous[mIdx]+DATA.carDelivery[mIdx]), type: 'neg',
-      tooltip: [{ k:'Acct+Legal+EB+Misc', v:'₹'+(DATA.accountingLegal[mIdx]+DATA.rent[mIdx]+DATA.telephone[mIdx]+DATA.eb[mIdx]+DATA.insurance[mIdx]+DATA.taxes[mIdx]+DATA.miscellaneous[mIdx]+DATA.carDelivery[mIdx]).toFixed(2)+'L' }] },
-    { label: 'Net Cash',        val: cl + finV, type: 'balance',
+    { label: 'Outsourcing',     val: -outsrcV, type: 'neg',
+      tooltip: [{ k:'Outsourcing cost', v:'₹'+outsrcV.toFixed(2)+'L' }, { k:'% of sales', v:((DATA.pctOutsource)*100).toFixed(0)+'%' }] },
+    { label: 'Transportation',  val: -transpV, type: 'neg',
+      tooltip: [{ k:'Transport / Delivery', v:'₹'+transpV.toFixed(2)+'L' }, { k:'% of sales', v:((DATA.pctTransport)*100).toFixed(0)+'%' }] },
+    { label: 'Balance',         val: preBal,   type: 'balance',
+      tooltip: [{ k:'Mid-month balance', v:'₹'+preBal.toFixed(2)+'L' }] },
+    { label: 'EMP Cost',        val: -salV,  type: 'neg',
+      tooltip: [{ k:'Employee Cost (Salaries)', v:'₹'+salV.toFixed(2)+'L' }] },
+    // ── Change 3: Other Fixed Costs — single solid bar, tooltip shows each contribution ──
+    { label: 'Other Fixed\nCosts', val: -otherFixedV, type: 'neg',
       tooltip: [
-        { k:'Pre-financing cash', v:'₹'+(cl+finV).toFixed(2)+'L' },
-        { k:'= Inflows – Operating', v:'Operating costs subtracted' },
-      ]},
-    { label: 'Loan Principal\nPayment', val: -finV, type: 'neg',
+        { k:'Food',               v:'₹'+DATA.food[mIdx].toFixed(2)+'L' },
+        { k:'Advertising',        v:'₹'+DATA.advertising[mIdx].toFixed(2)+'L' },
+        { k:'Accounting & Legal', v:'₹'+DATA.accountingLegal[mIdx].toFixed(2)+'L' },
+        { k:'Rent',               v:'₹'+DATA.rent[mIdx].toFixed(2)+'L' },
+        { k:'Telephone',          v:'₹'+DATA.telephone[mIdx].toFixed(2)+'L' },
+        { k:'Insurance',          v:'₹'+DATA.insurance[mIdx].toFixed(2)+'L' },
+        { k:'Taxes (RE etc)',     v:'₹'+DATA.taxes[mIdx].toFixed(2)+'L' },
+        { k:'Miscellaneous',      v:'₹'+DATA.miscellaneous[mIdx].toFixed(2)+'L' },
+        { k:'Total',              v:'₹'+otherFixedV.toFixed(2)+'L' },
+      ]
+    },
+    // ── Change 3 cont: EB and Repair & Maintenance after Other Fixed Costs ──
+    { label: 'EB',              val: -ebV,    type: 'neg',
+      tooltip: [{ k:'Electricity Board (EB)', v:'₹'+ebV.toFixed(2)+'L' }] },
+    { label: 'R&M',             val: -repairV, type: 'neg',
+      tooltip: [{ k:'Repair & Maintenance', v:'₹'+repairV.toFixed(2)+'L' }] },
+    // ── Change 4: Interest & Bank Charges — single solid bar, tooltip shows each contribution ──
+    { label: 'IBC',             val: -interestGroupV, type: 'neg',
       tooltip: [
-        { k:'Principal',    v:'₹'+DATA.loanPrincipal[mIdx].toFixed(2)+'L' },
-        { k:'Interest',     v:'₹'+(DATA.interestTerm[mIdx]+DATA.interestWC[mIdx]).toFixed(2)+'L' },
-        { k:'Other bank',   v:'₹'+DATA.otherBank[mIdx].toFixed(2)+'L' },
-        { k:'Unsecured Ln', v:'₹'+DATA.unsecuredLoan[mIdx].toFixed(2)+'L' },
-        { k:'Total',        v:'₹'+finV.toFixed(2)+'L' },
+        { k:'Interest – Term Loan',     v:'₹'+DATA.interestTerm[mIdx].toFixed(2)+'L' },
+        { k:'Interest – WC',            v:'₹'+DATA.interestWC[mIdx].toFixed(2)+'L' },
+        { k:'Other (Bank Usls/LC)',     v:'₹'+DATA.otherBank[mIdx].toFixed(2)+'L' },
+        { k:'Unsecured Loan Repay',     v:'₹'+DATA.unsecuredLoan[mIdx].toFixed(2)+'L' },
+        { k:'Total',                    v:'₹'+interestGroupV.toFixed(2)+'L' },
+      ]
+    },
+    { label: 'Net Cash',        val: cl + loanPrincipalV, type: 'balance',
+      tooltip: [
+        { k:'Pre-principal cash', v:'₹'+(cl+loanPrincipalV).toFixed(2)+'L' },
+        
       ]},
-    { label: `Closing\n${mn}`,  val: cl,     type: 'end',
+    // ── Change 4 cont: Loan Principal Payment (only principal) BEFORE Net Cash ──
+    { label: 'Loan Principal\nPayment', val: -loanPrincipalV, type: 'neg',
+      tooltip: [
+        { k:'Loan Principal Payment', v:'₹'+loanPrincipalV.toFixed(2)+'L' },
+        
+      ]},
+    // ── Change 5: Closing bar in green (type 'pos_end' handled below) ──
+    { label: `Closing\n${mn}`,  val: cl, type: 'closing_green',
       tooltip: [{ k:'Closing balance', v:'₹'+cl.toFixed(2)+'L' }, { k:'Change', v:(cl-ob>=0?'+':'')+((cl-ob)).toFixed(2)+'L' }] },
-  ].filter(b => b.type === 'stacked' || b.type === 'start' || b.type === 'end' || b.type === 'balance' || Math.abs(b.val) > 0.001);
+  ].filter(b => b.type === 'stacked' || b.type === 'start' || b.type === 'closing_green' || b.type === 'end' || b.type === 'balance' || Math.abs(b.val) > 0.001);
 
   let run = 0;
   const bars = buckets.map(b => {
-    if (b.type === 'stacked') { run = b.val; return { ...b, start: 0 }; }
+    // First stacked bar = Inflows (positive, sets the baseline)
+    if (b.type === 'stacked' && b.val > 0) { run = b.val; return { ...b, start: 0 }; }
+    // Negative stacked bars (Other Fixed Costs, Interest group)
+    if (b.type === 'stacked' && b.val <= 0) {
+      // treat like a normal neg bar: waterfall step down
+      const s = run; run += b.val; return { ...b, start: s };
+    }
     if (b.type === 'start')   { run = b.val; return { ...b, start: 0 }; }
     if (b.type === 'end')     { return { ...b, start: 0 }; }
+    if (b.type === 'closing_green') { return { ...b, type: 'closing_green', start: 0 }; }
     if (b.type === 'balance') {
       const snap = b.val;
       run = snap;
@@ -3060,59 +3137,139 @@ function _drawSingleMonthWaterfall(d, svgId, mIdx) {
     const s = run; run += b.val; return { ...b, start: s };
   });
 
-  _renderSteppedWfBars(svgEl, bars, 900, 330, 44, 10, 20, 68);
+  _renderSteppedWfBars(svgEl, bars, 1040, 330, 44, 10, 20, 68);
 }
 
-// ── Cost category waterfall ──
+// ── Cost category waterfall — mirrors Single Month Detail structure, summed over range ──
 function _drawCostWaterfall(d, svgId) {
   const svgEl = document.getElementById(svgId);
   const { from: f, to: t } = _getWfRange();
+  const periodLabel = MONTHS[f] + (f === t ? '' : '–' + MONTHS[t]);
 
-  const ob      = d.cashOnHand[f];
-  const totalRec = _sumSlice(d.totalReceipts, f, t);
-  const avail   = ob + totalRec;
-  const rmT     = _sumSlice(d.rm, f, t);
-  const salT    = _sumSlice(DATA.salaries, f, t);
-  const finT    = _sumSlice(DATA.loanPrincipal, f, t) + _sumSlice(DATA.interestTerm, f, t) + _sumSlice(DATA.interestWC, f, t) + _sumSlice(DATA.otherBank, f, t) + _sumSlice(DATA.unsecuredLoan, f, t);
-  const consT   = ['quenchOil','lubOil','innoline','dephosact','blackeningOil','methanol','lpg','kmno4','causticSoda','diesel','rpoOil'].reduce((s, k) => s + _sumSlice(DATA[k], f, t), 0);
-  const toolT   = _sumSlice(DATA.newTooling, f, t) + _sumSlice(d.repeatTool, f, t);
-  const packT   = _sumSlice(d.boxIn, f, t) + _sumSlice(d.boxOut, f, t) + _sumSlice(d.packStick, f, t);
-  const trT     = _sumSlice(d.transport, f, t) + _sumSlice(d.outsource, f, t);
-  const ohT     = ['food','repairsMaint','advertising','carDelivery','accountingLegal','rent','telephone','eb','insurance','taxes','miscellaneous'].reduce((s, k) => s + _sumSlice(DATA[k], f, t), 0);
-  const closing = d.cashPosition[t];
-  const totalOut = rmT + salT + finT + consT + toolT + packT + trT + ohT;
+  // ── Inflows (same split as Single Month) ──
+  const ob         = d.cashOnHand[f];
+  const salesRec   = _sumSlice(DATA.receiptFromSales, f, t) + _sumSlice(DATA.collectionsGst, f, t);
+  const loanInflowT = _sumSlice(DATA.loanInflow, f, t);
+  const totalInflow = ob + salesRec + loanInflowT;  // = cashOnHand[f] + all inflows
+
+  // ── Variable cost buckets ──
+  const rmT      = _sumSlice(d.rm, f, t);
+  const toolT    = _sumSlice(DATA.newTooling, f, t) + _sumSlice(d.repeatTool, f, t);
+  const consT    = ['quenchOil','lubOil','innoline','dephosact','blackeningOil','methanol','lpg','kmno4','causticSoda','diesel','rpoOil']
+                     .reduce((s, k) => s + _sumSlice(DATA[k], f, t), 0);
+  const packT    = _sumSlice(d.boxIn, f, t) + _sumSlice(d.boxOut, f, t) + _sumSlice(d.packStick, f, t);
+  const outsrcT  = _sumSlice(d.outsource, f, t);
+  const transpT  = _sumSlice(d.transport, f, t);
+
+  // Pre-balance (after variable costs, before people + fixed)
+  const preBal   = totalInflow - rmT - toolT - consT - packT - transpT - outsrcT;
+
+  // ── Fixed cost buckets ──
+  const salT     = _sumSlice(DATA.salaries, f, t);
+  const otherFixedT = _sumSlice(DATA.food, f, t) + _sumSlice(DATA.advertising, f, t)
+                    + _sumSlice(DATA.accountingLegal, f, t) + _sumSlice(DATA.rent, f, t)
+                    + _sumSlice(DATA.telephone, f, t) + _sumSlice(DATA.insurance, f, t)
+                    + _sumSlice(DATA.taxes, f, t) + _sumSlice(DATA.miscellaneous, f, t);
+  const ebT      = _sumSlice(DATA.eb, f, t);
+  const repairT  = _sumSlice(DATA.repairsMaint, f, t);
+
+  // ── Financing ──
+  const ibcT     = _sumSlice(DATA.interestTerm, f, t) + _sumSlice(DATA.interestWC, f, t)
+                 + _sumSlice(DATA.otherBank, f, t)    + _sumSlice(DATA.unsecuredLoan, f, t)
+                 + _sumSlice(DATA.capitalPurchase, f, t) + _sumSlice(DATA.otherStartup, f, t)
+                 + _sumSlice(DATA.reserveEscrow, f, t);
+  const loanPrinT = _sumSlice(DATA.loanPrincipal, f, t);
+
+  const closing  = d.cashPosition[t];
+  // Net Cash = closing + loanPrinT (mirrors single month logic)
+  const netCashV = closing + loanPrinT;
 
   const buckets = [
-    { label: 'Total\nAvailable', val: avail,  type: 'start',
-      tooltip: [{ k:'Opening', v:'₹'+ob.toFixed(2)+'L' }, { k:'Total receipts', v:'₹'+totalRec.toFixed(2)+'L' }] },
-    { label: 'Raw\nMaterial',    val: rmT,    type: 'neg',
-      tooltip: [{ k:'RM HT/SS', v:'₹'+rmT.toFixed(2)+'L' }, { k:'Share of outflow', v:((rmT/totalOut)*100).toFixed(1)+'%' }] },
-    { label: 'Salaries',         val: salT,   type: 'neg',
-      tooltip: [{ k:'Total salaries', v:'₹'+salT.toFixed(2)+'L' }, { k:'Share', v:((salT/totalOut)*100).toFixed(1)+'%' }] },
-    { label: 'Financing',        val: finT,   type: 'neg',
-      tooltip: [{ k:'Loans+Interest', v:'₹'+finT.toFixed(2)+'L' }, { k:'Share', v:((finT/totalOut)*100).toFixed(1)+'%' }] },
-    { label: 'Consumables',      val: consT,  type: 'neg',
-      tooltip: [{ k:'Oils+Chem+LPG', v:'₹'+consT.toFixed(2)+'L' }, { k:'Share', v:((consT/totalOut)*100).toFixed(1)+'%' }] },
-    { label: 'Tooling',          val: toolT,  type: 'neg',
-      tooltip: [{ k:'New+Repeat tooling', v:'₹'+toolT.toFixed(2)+'L' }] },
-    { label: 'Packing',          val: packT,  type: 'neg',
-      tooltip: [{ k:'Inner+Outer+Labels', v:'₹'+packT.toFixed(2)+'L' }] },
-    { label: 'Transport\n& OS',  val: trT,    type: 'neg',
-      tooltip: [{ k:'Transport+Outsource', v:'₹'+trT.toFixed(2)+'L' }] },
-    { label: 'Overheads',        val: ohT,    type: 'neg',
-      tooltip: [{ k:'EB+Food+Admin+Misc', v:'₹'+ohT.toFixed(2)+'L' }, { k:'Share', v:((ohT/totalOut)*100).toFixed(1)+'%' }] },
-    { label: 'Closing\nCash',    val: closing, type: 'end',
-      tooltip: [{ k:'Year-end cash', v:'₹'+closing.toFixed(2)+'L' }, { k:'Net change', v:(closing-ob>=0?'+':'')+((closing-ob)).toFixed(2)+'L' }] },
-  ];
+    // ── STACKED: Opening + Receipts + Loan — same as Single Month ──
+    {
+      label: `Inflows\n${periodLabel}`,
+      val:   totalInflow,
+      type:  'stacked',
+      segments: [
+        { val: ob,          color: '#6366f1', label: `Opening Balance (${MONTHS[f]})`, shortLabel: 'Opening'  },
+        { val: salesRec,    color: '#10b981', label: 'Collections / Receipts',          shortLabel: 'Receipts' },
+        { val: loanInflowT, color: '#0ea5e9', label: 'Loan / Other Injection',           shortLabel: 'Loan'     },
+      ].filter(s => s.val > 0.001),
+      tooltip: [
+        { k: `Opening (${MONTHS[f]})`,        v: '₹'+ob.toFixed(2)+'L' },
+        { k: 'Receipts (Sales+GST)',           v: '₹'+salesRec.toFixed(2)+'L' },
+        { k: 'Loan Injection',                 v: '₹'+loanInflowT.toFixed(2)+'L' },
+        { k: 'Total Inflow',                   v: '₹'+totalInflow.toFixed(2)+'L' },
+      ]
+    },
+    { label: 'Raw\nMaterial',    val: -rmT,      type: 'neg',
+      tooltip: [{ k:'RM HT/SS', v:'₹'+rmT.toFixed(2)+'L' }, { k:'% of sales', v:((DATA.pctRM)*100).toFixed(0)+'%' }] },
+    { label: 'Tooling',          val: -toolT,    type: 'neg',
+      tooltip: [{ k:'New tooling', v:'₹'+_sumSlice(DATA.newTooling,f,t).toFixed(2)+'L' }, { k:'Repeat tooling', v:'₹'+_sumSlice(d.repeatTool,f,t).toFixed(2)+'L' }] },
+    { label: 'Consumables',      val: -consT,    type: 'neg',
+      tooltip: [{ k:'Oils+LPG+Chemicals', v:'₹'+consT.toFixed(2)+'L' }] },
+    { label: 'Packing',          val: -packT,    type: 'neg',
+      tooltip: [{ k:'Inner+Outer+Stickers', v:'₹'+packT.toFixed(2)+'L' }] },
+    { label: 'Outsourcing',      val: -outsrcT,  type: 'neg',
+      tooltip: [{ k:'Outsourcing cost', v:'₹'+outsrcT.toFixed(2)+'L' }, { k:'% of sales', v:((DATA.pctOutsource)*100).toFixed(0)+'%' }] },
+    { label: 'Transportation',   val: -transpT,  type: 'neg',
+      tooltip: [{ k:'Transport / Delivery', v:'₹'+transpT.toFixed(2)+'L' }, { k:'% of sales', v:((DATA.pctTransport)*100).toFixed(0)+'%' }] },
+    { label: 'Balance',          val: preBal,    type: 'balance',
+      tooltip: [{ k:'Mid-period balance', v:'₹'+preBal.toFixed(2)+'L' }] },
+    { label: 'EMP Cost',         val: -salT,     type: 'neg',
+      tooltip: [{ k:'Employee Cost (Salaries)', v:'₹'+salT.toFixed(2)+'L' }] },
+    { label: 'Other Fixed\nCosts', val: -otherFixedT, type: 'neg',
+      tooltip: [
+        { k:'Food',               v:'₹'+_sumSlice(DATA.food,f,t).toFixed(2)+'L' },
+        { k:'Advertising',        v:'₹'+_sumSlice(DATA.advertising,f,t).toFixed(2)+'L' },
+        { k:'Accounting & Legal', v:'₹'+_sumSlice(DATA.accountingLegal,f,t).toFixed(2)+'L' },
+        { k:'Rent',               v:'₹'+_sumSlice(DATA.rent,f,t).toFixed(2)+'L' },
+        { k:'Telephone',          v:'₹'+_sumSlice(DATA.telephone,f,t).toFixed(2)+'L' },
+        { k:'Insurance',          v:'₹'+_sumSlice(DATA.insurance,f,t).toFixed(2)+'L' },
+        { k:'Taxes (RE etc)',     v:'₹'+_sumSlice(DATA.taxes,f,t).toFixed(2)+'L' },
+        { k:'Miscellaneous',      v:'₹'+_sumSlice(DATA.miscellaneous,f,t).toFixed(2)+'L' },
+        { k:'Total',              v:'₹'+otherFixedT.toFixed(2)+'L' },
+      ]
+    },
+    { label: 'EB',               val: -ebT,      type: 'neg',
+      tooltip: [{ k:'Electricity Board (EB)', v:'₹'+ebT.toFixed(2)+'L' }] },
+    { label: 'R&M',              val: -repairT,  type: 'neg',
+      tooltip: [{ k:'Repair & Maintenance', v:'₹'+repairT.toFixed(2)+'L' }] },
+    { label: 'IBC',              val: -ibcT,     type: 'neg',
+      tooltip: [
+        { k:'Interest – Term Loan',     v:'₹'+_sumSlice(DATA.interestTerm,f,t).toFixed(2)+'L' },
+        { k:'Interest – WC',            v:'₹'+_sumSlice(DATA.interestWC,f,t).toFixed(2)+'L' },
+        { k:'Other (Bank Usls/LC)',     v:'₹'+_sumSlice(DATA.otherBank,f,t).toFixed(2)+'L' },
+        { k:'Unsecured Loan Repay',     v:'₹'+_sumSlice(DATA.unsecuredLoan,f,t).toFixed(2)+'L' },
+        { k:'Capital Purchase',         v:'₹'+_sumSlice(DATA.capitalPurchase,f,t).toFixed(2)+'L' },
+        { k:'Other Startup',            v:'₹'+_sumSlice(DATA.otherStartup,f,t).toFixed(2)+'L' },
+        { k:'Reserve / Escrow',         v:'₹'+_sumSlice(DATA.reserveEscrow,f,t).toFixed(2)+'L' },
+        { k:'Total',                    v:'₹'+ibcT.toFixed(2)+'L' },
+      ]
+    },
+    { label: 'Net Cash',         val: netCashV,  type: 'balance',
+      tooltip: [{ k:'Pre-principal cash', v:'₹'+netCashV.toFixed(2)+'L' }] },
+    { label: 'Loan Principal\nPayment', val: -loanPrinT, type: 'neg',
+      tooltip: [{ k:'Loan Principal Payment', v:'₹'+loanPrinT.toFixed(2)+'L' }] },
+    { label: `Closing\n${MONTHS[t]}`, val: closing, type: 'closing_green',
+      tooltip: [{ k:'Closing balance', v:'₹'+closing.toFixed(2)+'L' }, { k:'Net change', v:(closing-ob>=0?'+':'')+((closing-ob)).toFixed(2)+'L' }] },
+  ].filter(b => b.type === 'stacked' || b.type === 'start' || b.type === 'closing_green' || b.type === 'end' || b.type === 'balance' || Math.abs(b.val) > 0.001);
 
   let run = 0;
   const bars = buckets.map(b => {
-    if (b.type === 'start') { run = b.val;  return { ...b, start: 0 }; }
-    if (b.type === 'end')   { return { ...b, start: 0 }; }
-    const s = run; run -= b.val; return { ...b, val: -b.val, start: s };
+    if (b.type === 'stacked' && b.val > 0)  { run = b.val; return { ...b, start: 0 }; }
+    if (b.type === 'stacked' && b.val <= 0) { const s = run; run += b.val; return { ...b, start: s }; }
+    if (b.type === 'start')        { run = b.val; return { ...b, start: 0 }; }
+    if (b.type === 'end')          { return { ...b, start: 0 }; }
+    if (b.type === 'closing_green'){ return { ...b, start: 0 }; }
+    if (b.type === 'balance') {
+      const snap = b.val; run = snap;
+      return { ...b, start: 0, _snap: true };
+    }
+    const s = run; run += b.val; return { ...b, start: s };
   });
 
-  _renderSteppedWfBars(svgEl, bars, 820, 310, 44, 10, 20, 62);
+  _renderSteppedWfBars(svgEl, bars, 1200, 330, 44, 10, 20, 68);
 }
 
 // ── Master entry point ──
@@ -3126,6 +3283,14 @@ function drawWaterfall() {
   if (fromSel && toSel) {
     WF_RANGE.from = parseInt(fromSel.value) || 0;
     WF_RANGE.to   = parseInt(toSel.value)   || N-1;
+  }
+
+  // Set SVG min-width based on view (cost & single have many bars)
+  const wfSvgEl = document.getElementById('wfSvg');
+  if (view === 'single' || view === 'cost') {
+    wfSvgEl.style.minWidth = '1100px';
+  } else {
+    wfSvgEl.style.minWidth = '700px';
   }
 
   if (view === 'annual') {
