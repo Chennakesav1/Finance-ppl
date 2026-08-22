@@ -174,9 +174,19 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
                     remarks: get('remarks') ?? get('remakrs') ?? ''
                 };
 
+                // FILTER FIX: Old filter { transactionDate, description, debit, credit } collapsed
+                // duplicate "IMPS SC" rows (same time, same ₹5.9 debit) into one record.
+                // Adding chequeNo + balance makes each row uniquely identifiable.
                 bulkBankOps.push({
                     updateOne: {
-                        filter: { transactionDate: tDate, description: desc, debit: doc.debit, credit: doc.credit },
+                        filter: {
+                            transactionDate: tDate,
+                            description:     desc,
+                            debit:           doc.debit,
+                            credit:          doc.credit,
+                            chequeNo:        doc.chequeNo,
+                            balance:         doc.balance
+                        },
                         update: { $set: doc },
                         upsert: true
                     }
