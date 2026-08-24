@@ -347,23 +347,26 @@ async function loadFinanceData() {
             <td>₹${oeToday.toLocaleString('en-IN')}</td>
             <td>₹${oeMtd.toLocaleString('en-IN')}</td>
         </tr>`;
-        // OE sub-rows: Bajaj
+        // OE sub-rows: Bajaj — only show when non-zero
         const bajajT = Math.round(oeSubAnalysis['BAJAJ']?.today || 0);
         const bajajM = Math.round(oeSubAnalysis['BAJAJ']?.mtd || 0);
-        salesRows += `<tr style="background:#f8fbff; color:#555; font-size:12px;">
-            <td style="padding-left:28px;">↳ Bajaj</td>
-            <td>₹${bajajT.toLocaleString('en-IN')}</td>
-            <td>₹${bajajM.toLocaleString('en-IN')}</td>
-        </tr>`;
-        // OE sub-rows: Gabriel
+        if (bajajT > 0 || bajajM > 0) {
+            salesRows += `<tr style="background:#f8fbff; color:#555; font-size:12px;">
+                <td style="padding-left:28px;">↳ Bajaj</td>
+                <td>₹${bajajT.toLocaleString('en-IN')}</td>
+                <td>₹${bajajM.toLocaleString('en-IN')}</td>
+            </tr>`;
+        }
+        // OE sub-rows: Gabriel — only show when non-zero
         const gabrielT = Math.round(oeSubAnalysis['GABRIEL INDIA LIMITED']?.today || 0);
         const gabrielM = Math.round(oeSubAnalysis['GABRIEL INDIA LIMITED']?.mtd || 0);
-        salesRows += `<tr style="background:#f8fbff; color:#555; font-size:12px;">
-            <td style="padding-left:28px;">↳ Gabriel India Limited</td>
-            <td>₹${gabrielT.toLocaleString('en-IN')}</td>
-            <td>₹${gabrielM.toLocaleString('en-IN')}</td>
-        </tr>`;
-
+        if (gabrielT > 0 || gabrielM > 0) {
+            salesRows += `<tr style="background:#f8fbff; color:#555; font-size:12px;">
+                <td style="padding-left:28px;">↳ Gabriel India Limited</td>
+                <td>₹${gabrielT.toLocaleString('en-IN')}</td>
+                <td>₹${gabrielM.toLocaleString('en-IN')}</td>
+            </tr>`;
+        }
         // ── RETAILS ROW (main + merged SS Dealers) ─────────────────────────────
         const rRow = analysis.salesAnalysis.find(r => matchCategory('RETAILS', r._id)) || { today: 0, mtd: 0 };
         const ssRow = analysis.salesAnalysis.find(r => matchCategory('SS DEALERS', r._id)) || { today: 0, mtd: 0 };

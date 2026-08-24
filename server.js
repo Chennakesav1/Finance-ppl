@@ -221,16 +221,23 @@ app.post('/api/finance/upload-excel', upload.single('file'), async (req, res) =>
             const headerRow = rawRows[salesHeaderIndex];
 
             // Map column indices: Date=0, Particulars=1, CustomerName(merged)=2, VchType=3, VchNo=4, Debit=5, Credit=6
+            // FIX: Use a regular for-loop instead of forEach.
+            // xlsx returns col 2 (the merged customer-name cell) as a SPARSE HOLE in the header row.
+            // Array.prototype.forEach SKIPS sparse holes entirely, so colIdx['customername'] was
+            // never assigned, causing every customer to come back as undefined.
+            // A plain for-loop with explicit index always visits every position.
             const colIdx = {};
-            headerRow.forEach((h, i) => {
-                if (!h) {
-                    // col 2 is None (merged cell carrying customer name)
-                    if (colIdx['customername'] === undefined) colIdx['customername'] = i;
-                    return;
+            for (let ci = 0; ci < headerRow.length; ci++) {
+                const h = headerRow[ci];
+                if (h === undefined || h === null || h === '') {
+                    if (colIdx['customername'] === undefined) colIdx['customername'] = ci;
+                    continue;
                 }
                 const clean = String(h).replace(/[^a-z0-9]/gi, '').toLowerCase();
-                colIdx[clean] = i;
-            });
+                colIdx[clean] = ci;
+            }
+            // Safety: if col 2 was truly sparse and never reached, set it explicitly
+            if (colIdx['customername'] === undefined) colIdx['customername'] = 2;
             console.log('Sales column indices:', colIdx);
 
             const bulkSalesOps = [];
