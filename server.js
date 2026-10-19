@@ -526,8 +526,17 @@ app.get('/api/finance/all-data', async (req, res) => {
             if (statutorySubAnalysis[key]) { statutorySubAnalysis[key].today = row.today; statutorySubAnalysis[key].mtd = row.mtd; }
         });
 
-        const lastTxOfPreviousMonth = await BankTransaction.findOne({ transactionDate: { $lt: startOfMonth } }).sort({ transactionDate: -1 });
-        const lastTxOfMonth = await BankTransaction.findOne({ transactionDate: { $gte: startOfMonth, $lte: endOfDay } }).sort({ transactionDate: -1, _id: 1 });
+        // IMPORTANT: derive opening/closing balance from the SAME `bankTransactions`
+        // array (already sorted transactionDate desc, newest first) that drives the
+        // Bank Statement Register table on the frontend. Previously these balances
+        // were computed via separate findOne() queries with a different tiebreak
+        // (`_id: 1`) for same-day transactions, which could pick a different row
+        // than whichever one actually sits at the top of the register for that
+        // date — causing the Register's "Final Balance" and the Summary's
+        // "Closing Balance (MTD)" to disagree. Reusing the exact same ordered
+        // array guarantees they always match what's shown on screen.
+        const lastTxOfMonth        = bankTransactions.find(tx => tx.transactionDate && tx.transactionDate <= endOfDay);
+        const lastTxOfPreviousMonth = bankTransactions.find(tx => tx.transactionDate && tx.transactionDate < startOfMonth);
         const openingBalance = lastTxOfPreviousMonth ? (lastTxOfPreviousMonth.finalBalance || lastTxOfPreviousMonth.balance || 0) : 0;
         const closingBalance = lastTxOfMonth        ? (lastTxOfMonth.finalBalance  || lastTxOfMonth.balance  || 0) : 0;
 
